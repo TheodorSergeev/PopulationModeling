@@ -18,7 +18,7 @@ using std::string;
 
 enum AREA_TYPE{EMPTY, FOOD, BIOCELL, WALL};
 typedef pair <int, int> coord_t;
-typedef vector < vector <CEnvironmentArea*> >  envmap_t;
+typedef vector <vector<CEnvironmentArea*> >  envmap_t;
 
 //-------------------------------------------------------------------------------------------------
 //
@@ -105,38 +105,35 @@ const int CFood::DEF_FOOD_VAL = 12;
 
 
 // Basic thin class-parent for cell types of the colonies
+struct CCellType
+{
+	int type_id;
+	string type_name;
+	int default_hp;
+	int speed;
+	int view_range;
+};
+
+
+
+
 class CCell: public CEnvironmentArea
 {
 
 private:
 
-	int type_id;
-	string type_name;
-
-	float hp;
-	float speed;
-	float view_range;
+	int hp;					// cell's current hp	
+	int cooldown;				// time since the cell moved
+	CCellType *cell_type;
 
 public:
+	static struct CCellType default_cell_type;
 
-	CCell()
-	{
-
-        type_id    = 0;
-        type_name  = "default";
-        hp         = 3;
-        speed      = 1;
-        view_range = 1;
-        area_type  = BIOCELL;
-
-	}
-
-    void Dump()
-    {
-
-        printf("id(%d) name(%s) hp(%g) speed(%g) view(%g)\n", type_id, type_name.c_str(), hp, speed, view_range);
-
-    }
+	CCell();
+	CCell(CCellType *type);
+	
+	void Dump(FILE* fp);
+	void Print() { this->Dump(stdout); }
 
 	virtual envmap_t View() const       // Get surroundings to decide upon the action
 	{
