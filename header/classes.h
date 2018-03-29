@@ -18,7 +18,6 @@ using std::string;
 
 enum AREA_TYPE{EMPTY, FOOD, BIOCELL, WALL};
 typedef pair <int, int> coord_t;
-//typedef vector <vector<CEnvironmentArea*> >  envmap_t;
 
 //-------------------------------------------------------------------------------------------------
 //
@@ -38,21 +37,29 @@ protected:
 public:
 	CEnvironmentArea(AREA_TYPE);
 	AREA_TYPE type(){ return area_type; }
-//	virtual coord_t Action() PURE;
 
 };
 
+typedef vector <vector<CEnvironmentArea*> >  envmap_t;
 
 class CEnvironment
 {
 
 private:
 
-	//envmap_t field;
+	envmap_t field;
 
 public:
+	CEnvironment(int, int);
 
-	int SpawnFood();						            // somehow add food on the field
+	coord_t GetBounds();
+	void DumpASCII(FILE *);
+	void Print() {this->DumpASCII(stdout);}
+	
+	int SpawnFood();		// somehow add food on the field
+	int DumbSpawnFood();
+	int PlantObject(CEnvironmentArea *, int, int);
+	int PlantObject(CEnvironmentArea *, coord_t);
 //	const envmap_t& ViewField(int x, int y, int range)
 //	
 //	{
@@ -82,12 +89,7 @@ private:
 
 public:
 
-	CFood(int hp_val = DEF_FOOD_VAL):CEnvironmentArea(FOOD)
-	{
-		hp_value = hp_val;
-	}
-
-	virtual coord_t Action(){} // food does not take any action
+	CFood(int);
 
 	int HpValue(){ return hp_value; }
 
@@ -97,11 +99,8 @@ public:
 
 };
 
-// in .cpp file
-// constants definitions
 
-
-// Basic thin class-parent for cell types of the colonies
+// Cell "genus" type; values that are common
 struct CCellType
 {
 	int type_id;
@@ -111,9 +110,7 @@ struct CCellType
 	int view_range;
 };
 
-
-
-
+// Basic thin class-parent for cell types of the colonies
 class CCell: public CEnvironmentArea
 {
 
@@ -129,9 +126,14 @@ public:
 	CCell(CCellType *type);
 	CCell();
 
+	int type_id()
+	{
+		return this->cell_type->type_id;
+	}
 	
 	void Dump(FILE* );
 	void Print() { this->Dump(stdout); }
+//	virtual coord_t Action(){} // food does not take any action
 
 //	virtual envmap_t View() const       // Get surroundings to decide upon the action
 //	{
