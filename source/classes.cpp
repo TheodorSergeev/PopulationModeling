@@ -1,5 +1,9 @@
 #include"../header/classes.h"
+
 #include<time.h>
+#include<stdio.h>
+const size_t TIMESTAMP_LEN = 50;
+
 
 
 //-------------Utility---------------------------------------------------------------------------
@@ -14,36 +18,40 @@ void PrintTimestamp(FILE *output)
 	fprintf(output, "\n%s.%09ld\n", timestamp, t.tv_nsec);
 	return;
 }
+//-----------------------------------------------------------------------------------------------
+//-------------CEnvironmentArea------------------------------------------------------------------
+
+CEnvironmentArea::CEnvironmentArea(AREA_TYPE type)
+{
+	area_type = type;
+}
 
 //------------------------------------------------------------------------------------------------
-
 //-------------CCell------------------------------------------------------------------------------
 
-CCell::CCell(CCellType *type)
+CCell::CCell(CCellType *type):CEnvironmentArea(BIOCELL)
 {
+	
 	cell_type = type;
 	hp = cell_type->default_hp;
 	cooldown = 0;
 }
 
-CCell::CCell()
+CCell::CCell():CEnvironmentArea(BIOCELL)
 {
-	cell_type = CCell::default_cell_type;
+	cell_type = &CCell::default_cell_type;
 	hp = cell_type->default_hp;
 	cooldown = 0;
 }
 
-
-
-
-void CCell::Dump(FILE* output);
+void CCell::Dump(FILE* output)
 {
 	PrintTimestamp(output);
-	fpintf(output, 	"CCell[%08X]:\n"
+	fprintf(output,	"CCell[%08X]:\n"
 			"{\n"
-			"\ttype_id = %d\n;"
+			"\ttype_id = %d;\n"
 			"\ttype_name = \"%s\";",
-			this, cell_type->type_id, cell_type->type_name);
+			this, cell_type->type_id, cell_type->type_name.c_str());
 	fprintf(output, "\n\tdefault_hp = %d;", cell_type->default_hp);
 	if(cell_type->default_hp < 1)
 		fprintf(output, "//\t\t\tERROR: NEGATIVE default_hp !!!");	
@@ -61,14 +69,17 @@ void CCell::Dump(FILE* output);
 		fprintf(output, "//\t\t\tERROR: NEGATIVE hp !!!");	
 	
 	fprintf(output, "\n\tcooldown = %d;", cooldown);
-	if(view_range < 0)
+	if(cooldown < 0)
 		fprintf(output, "//\t\t\tERROR: NEGATIVE cooldown !!!");	
 	if(cooldown >= cell_type->speed)
 		fprintf(output, "//\t\t\tERROR: cooldown SHOULD NOT BE MORE THAN speed !!!");	
-	fputs("\n};")
+	fputs("\n};", output);
 }
 
+//--------------------------------------------------------------------------------------------
+//-------------CFOOD--------------------------------------------------------------------------
 
+const int DEF_FOOD_VAL = 12;
 
 
 

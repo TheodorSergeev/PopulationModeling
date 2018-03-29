@@ -18,7 +18,7 @@ using std::string;
 
 enum AREA_TYPE{EMPTY, FOOD, BIOCELL, WALL};
 typedef pair <int, int> coord_t;
-typedef vector <vector<CEnvironmentArea*> >  envmap_t;
+//typedef vector <vector<CEnvironmentArea*> >  envmap_t;
 
 //-------------------------------------------------------------------------------------------------
 //
@@ -36,9 +36,9 @@ protected:
 	AREA_TYPE area_type;
 
 public:
-
-    AREA_TYPE type(){ return area_type; }
-	virtual coord_t Action() PURE;
+	CEnvironmentArea(AREA_TYPE);
+	AREA_TYPE type(){ return area_type; }
+//	virtual coord_t Action() PURE;
 
 };
 
@@ -48,17 +48,18 @@ class CEnvironment
 
 private:
 
-	envmap_t field;
+	//envmap_t field;
 
 public:
 
 	int SpawnFood();						            // somehow add food on the field
-	const envmap_t& ViewField(int x, int y, int range)
-	{
-
-
-
-	}
+//	const envmap_t& ViewField(int x, int y, int range)
+//	
+//	{
+//
+//
+//
+//	}
 	// returns [x+-range][y+-range] 2d array for the cell to know its surroindings
 	//
 	//  |N|N|N|
@@ -76,17 +77,14 @@ class CFood: public CEnvironmentArea
 
 private:
 
-    static const int DEF_FOOD_VAL;
+	static const int DEF_FOOD_VAL;
 	int hp_value; // food - hp_value > 0; posion - hp_value < 0
 
 public:
 
-	CFood(int hp_val = DEF_FOOD_VAL)
+	CFood(int hp_val = DEF_FOOD_VAL):CEnvironmentArea(FOOD)
 	{
-
-        hp_value = hp_val;
-        area_type = FOOD;
-
+		hp_value = hp_val;
 	}
 
 	virtual coord_t Action(){} // food does not take any action
@@ -95,13 +93,12 @@ public:
 
 	bool isPoison (){ if(hp_value <  0) return true; return false; }
 	bool isFood   (){ if(hp_value >  0) return true; return false; }
-    bool isCorrect(){ if(hp_value != 0) return true; return false; }
+	bool isCorrect(){ if(hp_value != 0) return true; return false; }
 
 };
 
 // in .cpp file
 // constants definitions
-const int CFood::DEF_FOOD_VAL = 12;
 
 
 // Basic thin class-parent for cell types of the colonies
@@ -129,33 +126,34 @@ private:
 public:
 	static struct CCellType default_cell_type;
 
-	CCell();
 	CCell(CCellType *type);
+	CCell();
+
 	
-	void Dump(FILE* fp);
+	void Dump(FILE* );
 	void Print() { this->Dump(stdout); }
 
-	virtual envmap_t View() const       // Get surroundings to decide upon the action
-	{
-
-
-
-	}
-
-	virtual coord_t Action() const      // Action (movement) and impact - e.t. increae hp on food consumption
-	{
-
-        envmap_t surroundings = View();
-
-        if(surroundings[0][1]->type() != WALL)
-            return coord_t(0, 1);
-
-	}
+//	virtual envmap_t View() const       // Get surroundings to decide upon the action
+//	{
+//
+//
+//
+//	}
+//
+//	virtual coord_t Action() const      // Action (movement) and impact - e.t. increae hp on food consumption
+//	{
+//
+//        envmap_t surroundings = View();
+//
+//        if(surroundings[0][1]->type() != WALL)
+//            return coord_t(0, 1);
+//
+//	}
 
 };
 
 // Child class - specific cell type, specific colony. Reimplement virtual functions
-class CBactterium: public CCell
+class CBacterium: public CCell
 {  };
 
 
@@ -246,9 +244,3 @@ if(field[0][1].type == FOOD)
 // 3) Movement
 // 4)
 
-int main()
-{
-
-    return 0;
-
-}
