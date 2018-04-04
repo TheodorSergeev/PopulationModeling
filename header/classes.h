@@ -16,8 +16,24 @@ using std::string;
 
 #define PURE
 
-enum AREA_TYPE{EMPTY, FOOD, BIOCELL, WALL};
+enum AREA_TYPE
+{
+	EMPTY, 
+	FOOD = 'F', 
+	BIOCELL = 'B', 
+	WALL,
+	ALLY = 'A',
+	HOSTILE = 'H'
+};
 typedef pair <int, int> coord_t;
+
+enum ERRORS
+{
+	OUT_OF_FIELD = -100,
+	OCCUPIED,
+	NEGATIVE,
+	BAD_RANGE
+};
 
 //-------------------------------------------------------------------------------------------------
 //
@@ -29,18 +45,29 @@ typedef pair <int, int> coord_t;
 // A cell of the 2d Environment array. Either empty/cell/food/poison/...
 class CEnvironmentArea
 {
-
-protected:
-
+private:
 	AREA_TYPE area_type;
-
+protected:
+	int hp; // food - hp_value > 0; posion - hp_value < 0
 public:
 	CEnvironmentArea(AREA_TYPE);
+//	~CEnvironmentArea(){};
+	bool isDead(){ if(hp == 0) return true; return false; }
 	AREA_TYPE type(){ return area_type; }
+	int Bite(int);
 
 };
 
 typedef vector <vector<CEnvironmentArea*> >  envmap_t;
+struct CView
+{
+	int x;
+	int y;
+	AREA_TYPE type;
+};
+
+typedef vector<CView*> sur_t;
+
 
 class CEnvironment
 {
@@ -51,6 +78,7 @@ private:
 
 public:
 	CEnvironment(int, int);
+//	~CEnvironment();
 
 	coord_t GetBounds();
 	void DumpASCII(FILE *);
@@ -58,8 +86,11 @@ public:
 	
 	int SpawnFood();		// somehow add food on the field
 	int DumbSpawnFood();
-	int PlantObject(CEnvironmentArea *, int, int);
+	int PlantObject(CEnvironmentArea *, int, int); // puts object in certain place
 	int PlantObject(CEnvironmentArea *, coord_t);
+	int WipeOut(); // deletes every object in field
+	int CleanUp(); // deletes all objects with 0 hp (eaten food, dead cells)
+	sur_t *GetSurroundings(int, int, int);
 //	const envmap_t& ViewField(int x, int y, int range)
 //	
 //	{
@@ -85,22 +116,21 @@ class CFood: public CEnvironmentArea
 private:
 
 	static const int DEF_FOOD_VAL;
-	int hp_value; // food - hp_value > 0; posion - hp_value < 0
 
 public:
 
 	CFood(int);
+//	~CFood(){};
 
-	int HpValue(){ return hp_value; }
+	int HpValue(){ return hp; }
 
-	bool isPoison (){ if(hp_value <  0) return true; return false; }
-	bool isFood   (){ if(hp_value >  0) return true; return false; }
-	bool isCorrect(){ if(hp_value != 0) return true; return false; }
+	bool isPoison (){ if(hp <  0) return true; return false; }
+	bool isFood   (){ if(hp >  0) return true; return false; }
 
 };
 
 
-// Cell "genus" type; values that are common
+// Cell "species" type; values that are common for all instances
 struct CCellType
 {
 	int type_id;
@@ -116,7 +146,6 @@ class CCell: public CEnvironmentArea
 
 private:
 
-	int hp;					// cell's current hp	
 	int cooldown;				// time since the cell moved
 	CCellType *cell_type;
 
@@ -125,6 +154,7 @@ public:
 
 	CCell(CCellType *type);
 	CCell();
+//	~CCell(){};
 
 	int type_id()
 	{
@@ -133,30 +163,18 @@ public:
 	
 	void Dump(FILE* );
 	void Print() { this->Dump(stdout); }
-//	virtual coord_t Action(){} // food does not take any action
+//	virtual coord_t Action(sur_t *){}; 
 
-//	virtual envmap_t View() const       // Get surroundings to decide upon the action
-//	{
-//
-//
-//
-//	}
-//
-//	virtual coord_t Action() const      // Action (movement) and impact - e.t. increae hp on food consumption
-//	{
-//
-//        envmap_t surroundings = View();
-//
-//        if(surroundings[0][1]->type() != WALL)
-//            return coord_t(0, 1);
-//
-//	}
 
 };
 
-// Child class - specific cell type, specific colony. Reimplement virtual functions
-class CBacterium: public CCell
-{  };
+//class CBacterium: public CCell
+//{  
+//public:
+//	CBacterium(CCellType *type = &CCell::default_cell_type):CCell(type){};
+//	
+//	coord_t Action(sur_t *);
+//};
 
 
 // Deals with iterations, colonies and statistics
