@@ -1,13 +1,16 @@
 # depslib dependency file v1.0
-1522787396 source:/home/fedor/Desktop/PopulationModeling/Window-Application/main.cpp
+1522843444 source:/home/fedor/Desktop/PopulationModeling/Window-Application/main.cpp
 	<wx/wx.h>
 	<wx/file.h>
 	<wx/wfstream.h>
 	<wx/txtstrm.h>
 	<wx/sstream.h>
 	<wx/string.h>
-	<sstream>
+	<wx/gdicmn.h>
 	<string>
+	<vector>
+	<sstream>
+	<algorithm>
 
 1393366634 /usr/include/wx-2.8/wx/wx.h
 	"wx/defs.h"
