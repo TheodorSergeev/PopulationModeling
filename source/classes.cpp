@@ -108,10 +108,11 @@ coord_t CBacterium::Action(sur_t *s) // Minimal example; only move where there i
 	{
 		if((*s)[i].type == FOOD)
 		{
-			ix = (float)(*s)[i].x;
-			iy = (float)(*s)[i].y;
-			x += 1.0/ix;
-			y += 1.0/iy;
+			ix = (float)((*s)[i].x);
+			iy = (float)((*s)[i].y);
+			float dist = ix + iy; 			//'manhattan' distance
+			x += ix/dist/dist;
+			y += iy/dist/dist;
 		}
 	}
 	if(fabs(x) > fabs(y))

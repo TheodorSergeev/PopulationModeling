@@ -31,15 +31,15 @@ int main()
 	
 	CEnvironment fld(5, 5);
 	
-	fld.PlantObject(mom, 1, 1);
+	int x = 2, y = 1, rng = 2;
+	fld.PlantObject(mom, x, y);
 
-	fld.PlantObject(food_p, 0, 1);
+	fld.PlantObject(food_p, x - 1, y);
 	fld.PlantObject(poison_p, 1, 0);
 	fld.PlantObject(eva, 3, 2);
 	fld.Print();
 	//int portion = evangelion->Bite(9000);
 	
-	int x = 2, y = 1, rng = 2;
 
 	sur_t *s = fld.GetSurroundings(x, y, rng);
 	printf("Cell at (%2d, %2d) sees in range %d:\n", x, y, rng);
@@ -47,7 +47,8 @@ int main()
 	{
 		printf("%2d %2d %c\n", (*s)[i].x, (*s)[i].y,(*s)[i].type);
 	}
-	mom->Action(s);
+	coord_t dir = mom->Action(s);
+	printf("YOUR MOM MOVES (%2d,%2d)\n", std::get<1>(dir), std::get<0>(dir));
 	s->clear();
 	delete s;
 	
