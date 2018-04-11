@@ -56,6 +56,7 @@ public:
 	bool isDead(){ if(hp == 0) return true; return false; }
 	AREA_TYPE type(){ return area_type; }
 	int Bite(int);
+	int ChangeHP(int);
 
 };
 //-------------------------------------------------------------------------------------------------
@@ -84,6 +85,8 @@ public:
 	coord_t GetBounds();
 	void DumpASCII(FILE *);
 	void Print() {this->DumpASCII(stdout);}
+
+	bool InField(int, int);
 	
 	int SpawnFood();						// somehow add food on the field
 	int DumbSpawnFood();
@@ -92,6 +95,8 @@ public:
 	int WipeOut(); 							// deletes every object in field
 	int CleanUp(); 							// deletes all objects with 0 hp (eaten food, dead cells)
 	sur_t *GetSurroundings(int, int, int);
+	int CellAction(int, int);
+	int Iteration();					//will move to CExperiment later
 };
 
 //-------------------------------------------------------------------------------------------------
@@ -142,14 +147,15 @@ public:
 	CCell();
 	virtual	~CCell(){};
 
-	int type_id()
-	{
-		return this->cell_type->type_id;
-	}
-	
+	int type_id();
+	int view_range();
+	void SetCooldown();
+	void DecCooldown();
+	bool CanMove();
+			
 	void Dump(FILE* );
 	void Print() { this->Dump(stdout); }
-	virtual coord_t Action(sur_t *) = 0; 
+	virtual coord_t Direction(sur_t *) = 0; 
 
 
 };
@@ -161,7 +167,7 @@ public:
 	CBacterium(CCellType *type = &CCell::default_cell_type):CCell(type){};
 	virtual	~CBacterium(){};
 	
-	coord_t Action(sur_t *);
+	coord_t Direction(sur_t *);
 };
 
 

@@ -45,6 +45,11 @@ int CEnvironmentArea::Bite(int dmg)
 	}	
 	
 }
+int CEnvironmentArea::ChangeHP(int delta)
+{
+	hp = (hp + delta > 0) ? hp + delta : 0;
+	return hp;
+}
 
 //------------------------------------------------------------------------------------------------
 //-------------CCell------------------------------------------------------------------------------
@@ -96,10 +101,36 @@ void CCell::Dump(FILE* output)
 	fputs("\n};", output);
 }
 
+int CCell::type_id()
+{
+	return this->cell_type->type_id;
+}
+
+int CCell::view_range()
+{
+	return cell_type->view_range;
+}
+void CCell::SetCooldown()
+{
+	cooldown = cell_type->speed;
+}
+
+void CCell::DecCooldown()
+{
+	cooldown = (cooldown - 1 > 0) ? cooldown - 1 : 0;
+}
+
+bool CCell::CanMove()
+{
+	if(cooldown == 0) return true;
+	return false;
+}
+
+
 //--------------------------------------------------------------------------------------------
 //-------------CBacterium--------------------------------------------------------------------------
 
-coord_t CBacterium::Action(sur_t *s) // Minimal example; only move where there is more food;
+coord_t CBacterium::Direction(sur_t *s) // Minimal example; only move where there is more food;
 {
 	float ix = 0, iy = 0;
 	float x = 0, y = 0;
@@ -345,5 +376,100 @@ sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
 	return res;
 	
 }
+
+bool CEnvironment::InField(int x, int y)
+{
+	int Y = field.size();
+	int X = field[0].size();	
+	if((x < 0)||(y < 0)||(x >= X)||(y >= Y))
+		return false;
+	return true;
+}
+
+#define KUS_SIZE 1
+
+int CEnvironment::CellAction(int x, int y)
+{
+	int Y = field.size();
+	int X = field[0].size();	
+	if(not this->InField(x, y))
+		return OUT_OF_FIELD;
+	if(field[y][x] == NULL)
+		return 0;
+	if(field[y][x]->type() != BIOCELL)
+		return 0;
+
+	CCell *curr = ((CCell *) field[y][x]);
+	int rng = curr->view_range();
+	sur_t *s = this->GetSurroundings(x, y, rng);
+	coord_t dir = curr->Direction(s);
+	s->clear();
+	delete s;
+
+	int x1 = x + std::get<0>(dir);
+	int y1 = y + std::get<1>(dir);
+
+	if(not this->InField(x1, y1))
+		return -1;					//TODO: this part)
+	if(curr->CanMove() && (field[y1][x1] == NULL))		// cell moves
+	{
+		field[y1][x1] = field[y][x];
+		field[y][x] = NULL;
+		curr->SetCooldown();
+		return 0;
+	}
+	
+	if(field[y1][x1] != NULL)
+	{
+		int delta = field[y1][x1]->Bite(KUS_SIZE);		//TODO: different value for different cells?
+		field[y][x]->ChangeHP(delta);
+		return 0;
+	}
+}
+
+int CEnvironment::Iteration()					//will move to CExperiment later
+								//TODO call cells in random order
+{
+	int Y = field.size();
+	int X = field[0].size();	
+	for(int i = 0; i < Y; i++)
+	{
+		for(int j = 0; j < X; j++)
+		{
+			if(field[i][j] == NULL)
+				continue;
+			field[i][j]->Bite(1);
+			if(field[i][j]->type() != BIOCELL)
+				continue;
+			CCell *curr = ((CCell *) field[i][j]);
+			curr->DecCooldown();
+			//Divide(x, y)				//TODO cell division
+		}	
+	}
+	
+	for(int i = 0; i < Y; i++)
+	{
+		for(int j = 0; j < X; j++)
+		{	
+			this->CellAction(j, i);
+		}
+	}	
+	this->CleanUp();
+	return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
