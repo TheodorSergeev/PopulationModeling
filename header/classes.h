@@ -52,7 +52,7 @@ protected:
 	int hp; // food - hp_value > 0; posion - hp_value < 0
 public:
 	CEnvironmentArea(AREA_TYPE);
-	~CEnvironmentArea(){};
+	virtual	~CEnvironmentArea(){};
 	bool isDead(){ if(hp == 0) return true; return false; }
 	AREA_TYPE type(){ return area_type; }
 	int Bite(int);
@@ -106,7 +106,7 @@ private:
 public:
 
 	CFood(int);
-	~CFood(){};
+	virtual	~CFood(){};
 
 	int HpValue(){ return hp; }
 
@@ -140,7 +140,7 @@ public:
 
 	CCell(CCellType *);
 	CCell();
-	~CCell(){};
+	virtual	~CCell(){};
 
 	int type_id()
 	{
@@ -159,7 +159,7 @@ class CBacterium: public CCell
 {  
 public:
 	CBacterium(CCellType *type = &CCell::default_cell_type):CCell(type){};
-	~CBacterium(){};
+	virtual	~CBacterium(){};
 	
 	coord_t Action(sur_t *);
 };

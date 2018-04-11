@@ -17,28 +17,29 @@ int main()
 
 	
 	CCell *mom = new CBacterium();
+	CCell *eva = new CBacterium(&test_type);
 
 	FILE *fp = fopen("dumps.txt", "a");
 	mom->Dump(fp);
 
 	CFood *food_p = new CFood(1);
 	CFood *poison_p = new CFood(-1);
-	printf("food at %08X\n", food_p);
-	printf("poison at %08X\n", poison_p);
-	printf("bacterium at %08X\n", mom);
+//	printf("food at %08X\n", food_p);
+//	printf("poison at %08X\n", poison_p);
+//	printf("bacterium at %08X\n", mom);
 
 	
-	CEnvironment fld(2, 2);
+	CEnvironment fld(5, 5);
 	
 	fld.PlantObject(mom, 1, 1);
 
 	fld.PlantObject(food_p, 0, 1);
 	fld.PlantObject(poison_p, 1, 0);
+	fld.PlantObject(eva, 3, 2);
 	fld.Print();
-
 	//int portion = evangelion->Bite(9000);
 	
-	int x = 0, y = 0, rng = 3;
+	int x = 2, y = 1, rng = 2;
 
 	sur_t *s = fld.GetSurroundings(x, y, rng);
 	printf("Cell at (%2d, %2d) sees in range %d:\n", x, y, rng);

@@ -222,7 +222,6 @@ int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y)
 	if(field[y][x] != NULL)
 		return OCCUPIED;
 	field[y][x] = obj;
-		printf("PlantObject: x = %2d y = %2d %08X ?= %08X\n", x, y, obj, field[y][x]);
 	return 0;
 }
 
@@ -261,26 +260,19 @@ int CEnvironment::WipeOut()
 	int X = field[0].size();	
 	int deleted = 0;
 	
-	FILE *f = fopen("WOlog.txt", "a");
-	fputs("x, y, address\n", f);
 	
 	for(int i = 0; i < Y; i++)
 	{
 		for(int j = 0; j < X; j++)
 		{
-			fprintf(f, "%2d %2d %08X ", j, i, field[i][j]);
 			if(field[i][j] != NULL)
 			{
-				fputs("deleting", f);
 				delete field[i][j];
 				field[i][j] = NULL;
 				deleted++;
-				fputs(" OK", f);
 			}
-			fputs("\n", f);
 		}
 	}
-	fclose(f);
 	return deleted;
 }
 
