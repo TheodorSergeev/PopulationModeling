@@ -99,34 +99,32 @@ void CCell::Dump(FILE* output)
 //--------------------------------------------------------------------------------------------
 //-------------CBacterium--------------------------------------------------------------------------
 
-
-
-//coord_t CBacterium::Action(sur_t *s) // Minimal example; only move where there is more food;
-//{
-//	float ix = 0, iy = 0;
-//	float x = 0, y = 0;
-//	int num = s->size();
-//	for(int i = 0; i < num; i++)
-//	{
-//		if((*s)[i]->type == FOOD)
-//		{
-//			ix = (float)(*s)[i]->x;
-//			iy = (float)(*s)[i]->y;
-//			x += 1.0/ix;
-//			y += 1.0/iy;
-//		}
-//	}
-//	if(fabs(x) > fabs(y))
-//	{
-//		if(x > 0) return coord_t(1, 0);	
-//		else return coord_t(-1, 0);
-//	}
-//	else
-//	{
-//		if(y > 0) return coord_t(0, 1);	
-//		else return coord_t(0, -1);
-//	}
-//}
+coord_t CBacterium::Action(sur_t *s) // Minimal example; only move where there is more food;
+{
+	float ix = 0, iy = 0;
+	float x = 0, y = 0;
+	int num = s->size();
+	for(int i = 0; i < num; i++)
+	{
+		if((*s)[i].type == FOOD)
+		{
+			ix = (float)(*s)[i].x;
+			iy = (float)(*s)[i].y;
+			x += 1.0/ix;
+			y += 1.0/iy;
+		}
+	}
+	if(fabs(x) > fabs(y))
+	{
+		if(x > 0) return coord_t(1, 0);	
+		else return coord_t(-1, 0);
+	}
+	else
+	{
+		if(y > 0) return coord_t(0, 1);	
+		else return coord_t(0, -1);
+	}
+}
 //--------------------------------------------------------------------------------------------
 //-------------CFood--------------------------------------------------------------------------
 
@@ -154,10 +152,10 @@ CEnvironment::CEnvironment(int x = DEF_XSZ, int y = DEF_YSZ)
 	field = envmap_t(y, row);
 	field.shrink_to_fit();
 }
-//CEnvironment::~CEnvironment()
-//{
-//	this->WipeOut();
-//}
+CEnvironment::~CEnvironment()
+{
+	this->WipeOut();
+}
 
 coord_t CEnvironment::GetBounds()
 {
@@ -224,7 +222,7 @@ int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y)
 	if(field[y][x] != NULL)
 		return OCCUPIED;
 	field[y][x] = obj;
-		printf("%08x %08x\n", obj, field[y][x]);
+		printf("PlantObject: x = %2d y = %2d %08X ?= %08X\n", x, y, obj, field[y][x]);
 	return 0;
 }
 
@@ -262,18 +260,27 @@ int CEnvironment::WipeOut()
 	int Y = field.size();
 	int X = field[0].size();	
 	int deleted = 0;
+	
+	FILE *f = fopen("WOlog.txt", "a");
+	fputs("x, y, address\n", f);
+	
 	for(int i = 0; i < Y; i++)
 	{
 		for(int j = 0; j < X; j++)
 		{
+			fprintf(f, "%2d %2d %08X ", j, i, field[i][j]);
 			if(field[i][j] != NULL)
 			{
+				fputs("deleting", f);
 				delete field[i][j];
 				field[i][j] = NULL;
 				deleted++;
+				fputs(" OK", f);
 			}
+			fputs("\n", f);
 		}
 	}
+	fclose(f);
 	return deleted;
 }
 
@@ -287,7 +294,6 @@ int CEnvironment::CleanUp()
 	{	
 		for(int j = 0; j < X; j++)
 		{
-			if((i == 1)&&(j == 1))	printf("%2d %2d %08X\n", i, j, field[i][j]);
 			if((field[i][j] != NULL)&&((field[i][j])->isDead()))
 			{
 				delete field[i][j];
@@ -334,7 +340,13 @@ sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
 				int id2 = ((CCell *) field[y][x])->type_id();
 				v->type = (id1 == id2) ? ALLY : HOSTILE;
 			}
-			res->push_back(v);
+			if((v->type == FOOD) && (field[y0][x0] != NULL) && ((t = (field[y0][x0])->type()) == BIOCELL))
+			{
+				if(((CFood *) field[y][x])->isPoison())
+					v->type = POISON;	
+			}
+			res->push_back(*v);
+			delete v;
 		}
 	}	
 	return res;
