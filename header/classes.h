@@ -24,9 +24,11 @@ enum AREA_TYPE
 	BIOCELL = 'B', 
 	WALL,
 	ALLY = 'A',
-	HOSTILE = 'H'
+	HOSTILE = 'H',
+	OUT
 };
 typedef pair <int, int> coord_t;
+extern const coord_t INCORRECT;
 
 enum ERRORS
 {
@@ -87,6 +89,16 @@ public:
 	void Print() {this->DumpASCII(stdout);}
 
 	bool InField(int, int);
+	bool InField(coord_t p) 
+	{
+		return this->InField(std::get<0>(p), std::get<1>(p));
+	};
+	
+	AREA_TYPE What(int, int);
+	AREA_TYPE What(coord_t p)
+	{
+		return this->What(std::get<0>(p), std::get<1>(p));
+	};
 	
 	int SpawnFood();						// somehow add food on the field
 	int DumbSpawnFood();
@@ -96,6 +108,11 @@ public:
 	int CleanUp(); 							// deletes all objects with 0 hp (eaten food, dead cells)
 	sur_t *GetSurroundings(int, int, int);
 	int CellAction(int, int);
+
+	coord_t GetFreeAdj(int, int);
+	coord_t Divide(int, int);
+
+
 	int Iteration();					//will move to CExperiment later
 };
 
@@ -149,9 +166,11 @@ public:
 
 	int type_id();
 	int view_range();
+	int Complexity();
 	void SetCooldown();
 	void DecCooldown();
 	bool CanMove();
+	bool CanDivide();
 			
 	void Dump(FILE* );
 	void Print() { this->Dump(stdout); }

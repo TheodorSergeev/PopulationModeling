@@ -3,7 +3,12 @@
 #include<time.h>
 #include<stdio.h>
 #include<math.h>
+
+#define Complexity_Fraction 3
+#define KUS_SIZE 1
 const size_t TIMESTAMP_LEN = 50;
+const coord_t INCORRECT = coord_t(-1, -1);
+const coord_t NO_SPACE = coord_t(-2, -2);
 
 
 
@@ -45,11 +50,13 @@ int CEnvironmentArea::Bite(int dmg)
 	}	
 	
 }
+
 int CEnvironmentArea::ChangeHP(int delta)
 {
 	hp = (hp + delta > 0) ? hp + delta : 0;
 	return hp;
 }
+
 
 //------------------------------------------------------------------------------------------------
 //-------------CCell------------------------------------------------------------------------------
@@ -110,6 +117,10 @@ int CCell::view_range()
 {
 	return cell_type->view_range;
 }
+int CCell::Complexity()
+{
+	return (cell_type->speed + cell_type->default_hp + cell_type->view_range)/Complexity_Fraction;
+}
 void CCell::SetCooldown()
 {
 	cooldown = cell_type->speed;
@@ -125,6 +136,12 @@ bool CCell::CanMove()
 	if(cooldown == 0) return true;
 	return false;
 }
+
+bool CCell::CanDivide()
+{
+	return (this->Complexity() + 2*cell_type->default_hp > hp);
+}
+
 
 
 //--------------------------------------------------------------------------------------------
@@ -217,10 +234,7 @@ void CEnvironment::DumpASCII(FILE *output)
 		for(int j = 0; j < X; j++)
 		{
 			char c = ' ';
-			AREA_TYPE t = EMPTY;
-
-			if(field[i][j] != NULL)
-				t = field[i][j]->type();
+			AREA_TYPE t = this->What(j, i);
 
 			switch(t)
 			{
@@ -331,16 +345,13 @@ int CEnvironment::CleanUp()
 
 sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
 {
-	if(x0 < 0 || y0 < 0)
-		return NULL;
-
-	int Y = field.size();
-	int X = field[0].size();	
-	if((x0 >= X) || (y0 >= Y))
-		return NULL;
-	
 	if(range <= 0)
 		return NULL;
+	AREA_TYPE tp0 = this->What(x0, y0);
+	if(tp0 == OUT)
+		return 0;
+	int Y = field.size();
+	int X = field[0].size();	
 	
 	sur_t *res = new sur_t();
 	int x, y;
@@ -351,20 +362,20 @@ sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
 		{
 			x = x0 + j;
 			y = y0 + i;
-			if((x < 0)||(y < 0)||(x >= X)||(y >= Y)||(field[y][x] == NULL))
+			AREA_TYPE tp = this->What(x, y);
+			if((tp == OUT) || (tp == EMPTY))
 				continue;
 			CView *v = new CView;
 			v->x = j;
 			v->y = i;
-			v->type = field[y][x]->type();
-			AREA_TYPE t;
-			if((v->type == BIOCELL) && (field[y0][x0] != NULL) && ((t = (field[y0][x0])->type()) == BIOCELL))
+			v->type = tp;
+			if((v->type == BIOCELL) && (tp0 == BIOCELL))
 			{
 				int id1 = ((CCell *) field[y0][x0])->type_id();
 				int id2 = ((CCell *) field[y][x])->type_id();
 				v->type = (id1 == id2) ? ALLY : HOSTILE;
 			}
-			if((v->type == FOOD) && (field[y0][x0] != NULL) && ((t = (field[y0][x0])->type()) == BIOCELL))
+			if((v->type == FOOD))
 			{
 				if(((CFood *) field[y][x])->isPoison())
 					v->type = POISON;	
@@ -386,18 +397,21 @@ bool CEnvironment::InField(int x, int y)
 	return true;
 }
 
-#define KUS_SIZE 1
+AREA_TYPE CEnvironment::What(int x, int y)
+{
+	if(!this->InField(x, y))
+		return OUT;
+	if(field[y][x] == NULL)
+		return EMPTY;
+	return field[y][x]->type();	
+}
 
 int CEnvironment::CellAction(int x, int y)
 {
+	if(this->What(x, y) != BIOCELL)
+		return 0;
 	int Y = field.size();
 	int X = field[0].size();	
-	if(not this->InField(x, y))
-		return OUT_OF_FIELD;
-	if(field[y][x] == NULL)
-		return 0;
-	if(field[y][x]->type() != BIOCELL)
-		return 0;
 
 	CCell *curr = ((CCell *) field[y][x]);
 	int rng = curr->view_range();
@@ -421,11 +435,38 @@ int CEnvironment::CellAction(int x, int y)
 	
 	if(field[y1][x1] != NULL)
 	{
-		int delta = field[y1][x1]->Bite(KUS_SIZE);		//TODO: different value for different cells?
-		field[y][x]->ChangeHP(delta);
+		int delta = field[y1][x1]->Bite(KUS_SIZE);	//TODO: different value for different cells?
+		field[y][x]->ChangeHP(delta);			//TODO: cells from same colony interaction?
 		return 0;
 	}
 }
+
+//coord_t CEnvironment::GetFreeAdj(int x, int y)
+//{
+//	if(!this->InField(x, y))
+//		return INCORRECT;
+//	coord_t adj[] = { coord_t(x + 1, y),
+//				coord_t(x - 1, y),
+//				coord_t(x, y + 1),
+//				coord_t(x, y - 1) };
+//	for(int i = 0; i < 4; i++)
+//	{
+//		if(this->What(adj[i]) == EMPTY)
+//			return adj[i];
+//	}
+//	return NO_SPACE;
+//}
+//
+//coord_t CEnvironment::Divide(int x, int y)
+//{
+//	if(this->What(x, y) != BIOCELL)
+//		return INCORRECT;
+//	curr = (CCell *) field[y][x];
+//	if(!curr->CanDivide())
+//		return INCORRECT;
+//	
+//	
+//}
 
 int CEnvironment::Iteration()					//will move to CExperiment later
 								//TODO call cells in random order
@@ -457,19 +498,5 @@ int CEnvironment::Iteration()					//will move to CExperiment later
 	this->CleanUp();
 	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
