@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1522843444 source:/home/fedor/Desktop/PopulationModeling/Window-Application/main.cpp
+1526303355 source:/home/fedor/Desktop/PopulationModeling/Window-Application/main.cpp
 	<wx/wx.h>
 	<wx/file.h>
 	<wx/wfstream.h>
@@ -1493,4 +1493,22 @@
 
 1393366634 /usr/include/wx-2.8/wx/sstream.h
 	"wx/stream.h"
+
+1526302330 source:/home/fedor/Desktop/PopulationModeling/Window-Application/WindowApp.cpp
+
+1526301773 /home/fedor/Desktop/PopulationModeling/Window-Application/WindowApp.h
+	<wx/wx.h>
+	<wx/file.h>
+	<wx/wfstream.h>
+	<wx/txtstrm.h>
+	<wx/sstream.h>
+	<wx/string.h>
+	<wx/gdicmn.h>
+	<string>
+	<vector>
+	<sstream>
+	<algorithm>
+
+1526301834 /home/fedor/Desktop/PopulationModeling/Window-Application/WindowApp.cpp
+	"WindowApp.h"
 
