@@ -439,10 +439,13 @@ int CEnvironment::CellAction(int x, int y)
 
 	int x1 = x + std::get<0>(dir);
 	int y1 = y + std::get<1>(dir);
+	AREA_TYPE tp = this->What(x1, y1);
 
-	if(not this->InField(x1, y1))
+	if(tp == OUT)
+	{
 		return -1;					//TODO: this part)
-	if(curr->CanMove() && (field[y1][x1] == NULL))		// cell moves
+	}
+	if(curr->CanMove() && tp == EMPTY)		// cell moves
 	{
 		field[y1][x1] = field[y][x];
 		field[y][x] = NULL;
@@ -450,8 +453,14 @@ int CEnvironment::CellAction(int x, int y)
 		return 0;
 	}
 	
-	if(field[y1][x1] != NULL)
+	if(tp == FOOD || tp == BIOCELL)
 	{
+		if(tp == BIOCELL)
+		{
+			CCell *that = (CCell *)field[y1][x1];
+			if(that->type_id() == curr->type_id())
+				return 1;
+		}
 		int delta = field[y1][x1]->Bite(KUS_SIZE);	//TODO: different value for different cells?
 		field[y][x]->ChangeHP(delta);			//TODO: cells from same colony interaction?
 		return 0;
