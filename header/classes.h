@@ -55,10 +55,15 @@ protected:
 public:
 	CEnvironmentArea(AREA_TYPE);
 	virtual	~CEnvironmentArea(){};
+
 	bool isDead(){ if(hp == 0) return true; return false; }
+
 	AREA_TYPE type(){ return area_type; }
+
+	int HpValue(){ return hp; }
 	int Bite(int);
 	int ChangeHP(int);
+	int ResetHP();
 
 };
 //-------------------------------------------------------------------------------------------------
@@ -122,7 +127,6 @@ class CFood: public CEnvironmentArea
 {
 
 private:
-
 	static const int DEF_FOOD_VAL;
 
 public:
@@ -130,7 +134,6 @@ public:
 	CFood(int);
 	virtual	~CFood(){};
 
-	int HpValue(){ return hp; }
 
 	bool isPoison (){ if(hp <  0) return true; return false; }
 	bool isFood   (){ if(hp >  0) return true; return false; }
@@ -142,7 +145,9 @@ public:
 struct CCellType
 {
 	int type_id;
+
 	string type_name;
+
 	int default_hp;
 	int speed;
 	int view_range;
@@ -155,6 +160,7 @@ class CCell: public CEnvironmentArea
 private:
 
 	int cooldown;				// time since the cell moved
+protected:
 	CCellType *cell_type;
 
 public:
@@ -163,9 +169,11 @@ public:
 	CCell(CCellType *);
 	CCell();
 	virtual	~CCell(){};
+	virtual CCell *GetCopy(){};
 
 	int type_id();
 	int view_range();
+	int default_hp();
 	int Complexity();
 	void SetCooldown();
 	void DecCooldown();
@@ -187,6 +195,7 @@ public:
 	virtual	~CBacterium(){};
 	
 	coord_t Direction(sur_t *);
+	CCell *GetCopy();
 };
 
 

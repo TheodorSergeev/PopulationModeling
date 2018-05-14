@@ -5,7 +5,7 @@
 #include<math.h>
 
 #define Complexity_Fraction 3
-#define KUS_SIZE 1
+#define KUS_SIZE 6
 const size_t TIMESTAMP_LEN = 50;
 const coord_t INCORRECT = coord_t(-1, -1);
 const coord_t NO_SPACE = coord_t(-2, -2);
@@ -57,6 +57,15 @@ int CEnvironmentArea::ChangeHP(int delta)
 	return hp;
 }
 
+
+int CEnvironmentArea::ResetHP()
+{
+	if(area_type == BIOCELL)
+		hp = ((CCell *) this)->default_hp();
+	if(area_type == FOOD)
+		hp = 0;
+	return hp;
+}
 
 //------------------------------------------------------------------------------------------------
 //-------------CCell------------------------------------------------------------------------------
@@ -117,10 +126,17 @@ int CCell::view_range()
 {
 	return cell_type->view_range;
 }
+
+int CCell::default_hp()
+{
+	return cell_type->default_hp;
+}
+
 int CCell::Complexity()
 {
 	return (cell_type->speed + cell_type->default_hp + cell_type->view_range)/Complexity_Fraction;
 }
+
 void CCell::SetCooldown()
 {
 	cooldown = cell_type->speed;
@@ -139,7 +155,7 @@ bool CCell::CanMove()
 
 bool CCell::CanDivide()
 {
-	return (this->Complexity() + 2*cell_type->default_hp > hp);
+	return (this->Complexity() + 2*cell_type->default_hp < hp);
 }
 
 
@@ -173,6 +189,12 @@ coord_t CBacterium::Direction(sur_t *s) // Minimal example; only move where ther
 		if(y > 0) return coord_t(0, 1);	
 		else return coord_t(0, -1);
 	}
+}
+
+CCell *CBacterium::GetCopy()
+{
+	CBacterium *copy = new CBacterium(this->cell_type);
+	return (CCell *)copy;
 }
 //--------------------------------------------------------------------------------------------
 //-------------CFood--------------------------------------------------------------------------
@@ -349,9 +371,7 @@ sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
 		return NULL;
 	AREA_TYPE tp0 = this->What(x0, y0);
 	if(tp0 == OUT)
-		return 0;
-	int Y = field.size();
-	int X = field[0].size();	
+		return NULL;
 	
 	sur_t *res = new sur_t();
 	int x, y;
@@ -385,7 +405,6 @@ sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
 		}
 	}	
 	return res;
-	
 }
 
 bool CEnvironment::InField(int x, int y)
@@ -410,8 +429,6 @@ int CEnvironment::CellAction(int x, int y)
 {
 	if(this->What(x, y) != BIOCELL)
 		return 0;
-	int Y = field.size();
-	int X = field[0].size();	
 
 	CCell *curr = ((CCell *) field[y][x]);
 	int rng = curr->view_range();
@@ -441,32 +458,37 @@ int CEnvironment::CellAction(int x, int y)
 	}
 }
 
-//coord_t CEnvironment::GetFreeAdj(int x, int y)
-//{
-//	if(!this->InField(x, y))
-//		return INCORRECT;
-//	coord_t adj[] = { coord_t(x + 1, y),
-//				coord_t(x - 1, y),
-//				coord_t(x, y + 1),
-//				coord_t(x, y - 1) };
-//	for(int i = 0; i < 4; i++)
-//	{
-//		if(this->What(adj[i]) == EMPTY)
-//			return adj[i];
-//	}
-//	return NO_SPACE;
-//}
-//
-//coord_t CEnvironment::Divide(int x, int y)
-//{
-//	if(this->What(x, y) != BIOCELL)
-//		return INCORRECT;
-//	curr = (CCell *) field[y][x];
-//	if(!curr->CanDivide())
-//		return INCORRECT;
-//	
-//	
-//}
+coord_t CEnvironment::GetFreeAdj(int x, int y)
+{
+	if(!this->InField(x, y))
+		return INCORRECT;
+	coord_t adj[] = { coord_t(x + 1, y),
+				coord_t(x - 1, y),
+				coord_t(x, y + 1),
+				coord_t(x, y - 1) };
+	for(int i = 0; i < 4; i++)
+	{
+		if(this->What(adj[i]) == EMPTY)
+			return adj[i];
+	}
+	return NO_SPACE;
+}
+
+coord_t CEnvironment::Divide(int x, int y)
+{
+	if(this->What(x, y) != BIOCELL)
+		return INCORRECT;
+	CCell *curr = (CCell *) field[y][x];
+	if(!curr->CanDivide())
+		return INCORRECT;
+	coord_t pos = this->GetFreeAdj(x, y);
+	if(pos == INCORRECT || pos == NO_SPACE)
+		return pos;
+	CCell *child = curr->GetCopy(); 
+	this->PlantObject((CEnvironmentArea *) child, pos);	
+	curr->ResetHP();
+	return pos;
+}
 
 int CEnvironment::Iteration()					//will move to CExperiment later
 								//TODO call cells in random order
@@ -484,7 +506,7 @@ int CEnvironment::Iteration()					//will move to CExperiment later
 				continue;
 			CCell *curr = ((CCell *) field[i][j]);
 			curr->DecCooldown();
-			//Divide(x, y)				//TODO cell division
+			this->Divide(j, i);				//TODO cell division
 		}	
 	}
 	
