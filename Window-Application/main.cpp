@@ -11,13 +11,53 @@
 #include <sstream>
 #include <algorithm>
 
+#include "header/classes.h"
+//#include "source/classes.cpp"
+
+
+//-------------------------------------------------------------------------------------------------
+//
+//-----Application-----
+//
+//-------------------------------------------------------------------------------------------------
+
+
+// Deals with iterations, colonies and statistics
 class CExperiment
 {
 
+private:
+
+	int elapsed_time;
+	vector <int> colon_pop;   // colonies population statistic
+
+	const vector <int> 	  COLONY_COLOR; // colors of colonies - position == cell type id
+	const vector <string> COLONY_NAMES; // names  of colonies - position == cell type id
+
 public:
-    void Iteration(){}
+
+	void Iteration()
+	{
+
+
+
+	}
+
+	int ElapsedTime()
+	{
+
+		//assert(elapsed_time >= 0);
+		return elapsed_time;
+
+	}
+
+	// statistic functions
 
 };
+
+// number of cells of the envoronment field grid
+const int CELLS_NUM_X = 20;
+const int CELLS_NUM_Y = 20;
 
 class CWinApplication: public wxApp
 {
@@ -25,40 +65,25 @@ class CWinApplication: public wxApp
 private:
 
     float update_freq; // moves per second
-    CExperiment experiment;
+    CEnvironment* experiment;
 
 public:
+
     virtual bool OnInit();
-
-	void RunExperiment(float speed, int time_limit)
-	{
-
-		for(int t = 0; t <= time_limit; ++t)
-		{
-
-            experiment.Iteration();
-
-			// iteration
-			// field visualisation
-			// data collection
-			// data visualisaton
-			// pause check
-			// save check
-
-		}
-
-	}
+    virtual int  OnExit();
 
 };
+
 
 class CFieldDrawPane;  //for crossreferences between CDraw and CCMainWindow
 class CMainWindow;
 
 
 //colors for drawing cells
-const int NUM_COLOURS = 10;
-const wxColour COLONY_COLOURS[NUM_COLOURS] = {wxT("GOLDENROD"), wxT("FIREBRICK"), wxT("NAVY"), wxT("FOREST GREEN"), wxT("DARK ORCHID"),
-                                              wxT("GOLD"), wxT("INDIAN RED"), wxT("LIGHT BLUE") , wxT("LIGHT GREEN"), wxT("ORCHID")};
+const int NUM_COLOURS = 11;
+const wxColour COLONY_COLOURS[NUM_COLOURS] = {wxT("GREY"),
+                                              wxT("GOLD"), wxT("INDIAN RED"), wxT("LIGHT BLUE") , wxT("LIGHT GREEN"), wxT("ORCHID"),
+                                              wxT("GOLDENROD"), wxT("FIREBRICK"), wxT("NAVY"), wxT("FOREST GREEN"), wxT("DARK ORCHID")};
 
 //main window size
 const int WINDOW_HEIGHT = 600;
@@ -69,10 +94,6 @@ const double BORDER_X_LEFT  = 50;
 const double BORDER_Y_TOP   = 50;
 const double FIELD_X_SIZE   = std::min(WINDOW_HEIGHT - 2 * BORDER_Y_TOP, WINDOW_WIDTH - 2 * BORDER_X_LEFT);
 const double FIELD_Y_SIZE   = FIELD_X_SIZE;
-
-// number of cells of the envoronment field grid
-const int CELLS_NUM_X = 20;
-const int CELLS_NUM_Y = 20;
 
 
 class CMainWindow: public wxFrame
@@ -93,10 +114,29 @@ private:
     CFieldDrawPane* fdraw_pane;    // field draw pane
     wxPanel* base_panel;           // Это в "подвале" окошка
 
+// Experiment
+    int iter_freq;  // time between two experiment iterations in milliseconds
+    wxTimer timer;
+
+    wxString IterFreqStr()
+    {
+
+        string speed_str = "&Iteration every " + std::to_string(iter_freq) + " ms.";
+        wxString speed_wxstr(speed_str.c_str(), wxConvUTF8);
+        return speed_wxstr;
+
+    }
+
  public:
+    CEnvironment* experiment;
 
     CMainWindow(const wxString& title);
     void OnQuit(wxCommandEvent& event);
+    void OnButtonClick_SpeedInc(wxCommandEvent& event);
+    void OnButtonClick_SpeedDec(wxCommandEvent& event);
+    void OnButtonClick_Pause   (wxCommandEvent& event);
+
+    void OnTimer(wxTimerEvent& event);
 
     DECLARE_EVENT_TABLE()
 
@@ -106,8 +146,9 @@ enum
 {
 
     BUTTON_SpeedInc = wxID_HIGHEST + 1, // declares an id which will be used to call our button
-    BUTTON_SpeedDec = wxID_HIGHEST + 1,
-    BUTTON_Pause    = wxID_HIGHEST + 1
+    BUTTON_SpeedDec,
+    BUTTON_Pause,
+    TIMER
 
 };
 
@@ -140,9 +181,10 @@ const int ID_MENU_EDIT = 1003; // редактирование
 
 // Конструктор фрейма
 CMainWindow::CMainWindow(const wxString& title):wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(WINDOW_WIDTH, WINDOW_HEIGHT),
-                                            (wxDEFAULT_FRAME_STYLE & ~wxRESIZE_BORDER))
+                                            (wxDEFAULT_FRAME_STYLE & ~wxRESIZE_BORDER)), timer(this, TIMER)
 {
 
+    iter_freq = 500;
 
     headmenu_bar  = new wxMenuBar; // создали полоску для менюшки
     headmenu_item = new wxMenu;    // создали менюшку
@@ -160,22 +202,99 @@ CMainWindow::CMainWindow(const wxString& title):wxFrame(NULL, wxID_ANY, title, w
     base_panel = new wxPanel(this, wxID_ANY);          // создание панельки для текста, кнопок и рисовалки
     fdraw_pane = new CFieldDrawPane(base_panel, this); // тоже панель, но наша, помещаем ее на панель base_panel и задаем указатель на главный фрейм
 
-    text_speed    = new wxStaticText(base_panel, wxID_ANY, wxT("&Speed: "), wxPoint(600, 50), wxSize(100, 50), wxALIGN_LEFT | wxST_NO_AUTORESIZE);
-    but_speed_inc = new wxButton(base_panel, BUTTON_SpeedInc, wxT("&>>"), wxPoint(700, 100), wxSize(40, 30), 0); // with the text "hello World"
-    but_speed_dec = new wxButton(base_panel, BUTTON_SpeedDec, wxT("&<<"), wxPoint(600, 100), wxSize(40, 30), 0); // with the text "hello World"
-    but_speed_dec = new wxButton(base_panel, BUTTON_Pause,    wxT("&■"),  wxPoint(650, 100), wxSize(30, 30), 0); // with the text "hello World"
+    text_speed    = new wxStaticText(base_panel, wxID_ANY, IterFreqStr(), wxPoint(600, 50), wxSize(170, 50), wxALIGN_LEFT | wxST_NO_AUTORESIZE);
+    but_speed_dec = new wxButton(base_panel, BUTTON_SpeedDec, wxT("&<<"), wxPoint(600, 100), wxSize(30, 30), 0); // with the text "hello World"
+    but_speed_dec = new wxButton(base_panel, BUTTON_Pause,    wxT("&■"),  wxPoint(635, 100), wxSize(30, 30), 0); // with the text "hello World"
+    but_speed_inc = new wxButton(base_panel, BUTTON_SpeedInc, wxT("&>>"), wxPoint(670, 100), wxSize(30, 30), 0); // with the text "hello World"
 
     //but_speed_dec->SetLabel(wxT("&▶"));
     //text_speed->SetLabel(wxT("&Speed2"));
+
+	CCellType test_type;
+	test_type.type_id    = 1;
+	test_type.type_name  = "eva 01";
+	test_type.default_hp = 9;
+	test_type.speed      = 3;
+	test_type.view_range = 3;
+
+	CCell *mom = new CBacterium();
+	CCell *eva = new CBacterium(&test_type);
+    CFood *food_p2 = new CFood(100);
+
+    experiment = new CEnvironment(CELLS_NUM_X, CELLS_NUM_Y);
+	int x = 2, y = 1, rng = 2;
+	experiment->PlantObject(mom, x, y);
+	experiment->PlantObject(food_p2, x, y - 1);
+
+    timer.Start(iter_freq);    // 1 second interval
 
 };
 
 void CMainWindow::OnQuit(wxCommandEvent& event)
 {
 
+    if(experiment)
+        delete experiment;
+
     Close(true);
 
 };
+
+void CMainWindow::OnButtonClick_SpeedInc(wxCommandEvent& event)
+{
+
+    iter_freq += 250;
+    text_speed->SetLabel(IterFreqStr());
+    timer.Start(iter_freq);
+    this->Refresh();
+
+};
+
+void CMainWindow::OnButtonClick_SpeedDec(wxCommandEvent& event)
+{
+
+    if(iter_freq - 250 >= 0)
+        iter_freq -= 250;
+
+    text_speed->SetLabel(IterFreqStr());
+    timer.Start(iter_freq);
+    this->Refresh();
+
+};
+
+void CMainWindow::OnButtonClick_Pause(wxCommandEvent& event)
+{
+
+    if(timer.IsRunning())
+    {
+
+        but_speed_dec->SetLabel(wxT("&▶"));
+        text_speed->SetLabel(wxT("&Iterations paused"));
+        timer.Stop();
+
+    }
+    else
+    {
+
+        but_speed_dec->SetLabel(wxT("&■"));
+        text_speed->SetLabel(IterFreqStr());
+        timer.Start();
+
+    }
+
+    this->Refresh();
+
+};
+
+void CMainWindow::OnTimer(wxTimerEvent& event)
+{
+
+    experiment->Iteration();
+    this->Refresh();
+
+};
+
+
 
 CFieldDrawPane::CFieldDrawPane(wxPanel *parent, CMainWindow *fr):wxPanel(parent, -1, wxPoint(BORDER_X_LEFT, BORDER_Y_TOP), wxSize(FIELD_X_SIZE, FIELD_Y_SIZE), wxBORDER_NONE)
 {
@@ -213,7 +332,7 @@ void CFieldDrawPane::DrawCell(int x_pos, int y_pos, int col_num, wxDC& dc)
 {
 
     if(col_num > NUM_COLOURS)
-        throw "fuckup with colors number";
+        throw "Error with colors number";
 
     dc.SetBrush(wxBrush(COLONY_COLOURS[col_num]));
     dc.SetPen(wxPen(*wxRED, 0, wxTRANSPARENT));
@@ -231,47 +350,39 @@ void CFieldDrawPane::OnPaint(wxPaintEvent& event)
     cell_y_size = std::floor(canvas_size.y / CELLS_NUM_Y);
 
     if(cell_x_size <= 0 || cell_y_size <= 0)
-        throw "fuckup with cell size";
+        throw "Error with cell size";
 
     DrawGrid(dc);
 
-    /*for(int i = 0; i < CELLS_NUM_X; ++i)
+    for(int i = 0; i < CELLS_NUM_X; ++i)
     {
 
         for(int j = 0; j < CELLS_NUM_Y; ++j)
         {
 
-            if((i + j) % (NUM_COLOURS + 1) != 0)
-                DrawCell(i, j, (i + j) % (NUM_COLOURS + 1) - 1, dc);
+            AREA_TYPE env_area_type = mn->experiment->What(j, i);
+
+            DrawCell(i, j, env_area_type % NUM_COLOURS, dc);
 
         }
 
-    }*/
+    }
 
-    DrawCell(3, 3, 0, dc);
-    DrawCell(3, 4, 1, dc);
-    DrawCell(9, 9, 2, dc);
-    DrawCell(0, 9, 3, dc);
-    DrawCell(0, 0, 4, dc);
-    DrawCell(7, 8, 5, dc);
-
-    std::stringstream str;
-    str << canvas_size.x << " " << canvas_size.y << "\n";
-    str << cell_x_size << " " << cell_y_size << "\n";
-    wxFont font(20, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false);
-    dc.SetFont(font);
-    dc.SetTextForeground(wxColour(255, 102, 0));
-    dc.DrawText(wxString::FromUTF8(str.str().c_str()), 10, 10);
+    //std::stringstream str;
+    //str << canvas_size.x << " " << canvas_size.y << "\n";
+    //str << cell_x_size << " " << cell_y_size << "\n";
+    //wxFont font(20, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false);
+    //dc.SetFont(font);
+    //dc.SetTextForeground(wxColour(255, 102, 0));
+    //dc.DrawText(wxString::FromUTF8(str.str().c_str()), 10, 10);
 
 };
 
 
-IMPLEMENT_APP(CWinApplication)
-
 bool CWinApplication::OnInit()
 {
 
-    CMainWindow* wind = new CMainWindow(wxT("Population modeling"));
+    CMainWindow* wind = new CMainWindow(wxT("Population modeling")); // note that wxWidgets will free it automatically
     wind->Show(true);
     //SetTopWindow(wind);
 
@@ -279,9 +390,19 @@ bool CWinApplication::OnInit()
 
 };
 
+int  CWinApplication::OnExit()
+{
+
+    return 0;
+
+};
+
+
 BEGIN_EVENT_TABLE( CMainWindow, wxFrame )
-    EVT_BUTTON( BUTTON_SpeedInc, CMainWindow::OnQuit ) // Tell the OS to run MainFrame::OnExit when The button is pressed
-    EVT_BUTTON( BUTTON_SpeedDec, CMainWindow::OnQuit ) // Tell the OS to run MainFrame::OnExit when
-    EVT_BUTTON( BUTTON_Pause,    CMainWindow::OnQuit ) // Tell the OS to run MainFrame::OnExit when
+    EVT_TIMER ( TIMER, CMainWindow::OnTimer )
+    EVT_BUTTON( BUTTON_SpeedInc, CMainWindow::OnButtonClick_SpeedInc ) // Tell the OS to run MainFrame::OnExit when The button is pressed
+    EVT_BUTTON( BUTTON_SpeedDec, CMainWindow::OnButtonClick_SpeedDec ) // Tell the OS to run MainFrame::OnExit when
+    EVT_BUTTON( BUTTON_Pause,    CMainWindow::OnButtonClick_Pause    ) // Tell the OS to run MainFrame::OnExit when
 END_EVENT_TABLE()
 
+IMPLEMENT_APP(CWinApplication)
