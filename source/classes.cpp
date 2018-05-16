@@ -422,6 +422,8 @@ AREA_TYPE CEnvironment::What(int x, int y)
 		return OUT;
 	if(field[y][x] == NULL)
 		return EMPTY;
+	if(field[y][x]->type == FOOD && ((CFood *)field[y][x])->IsPoison())
+		return POISON;
 	return field[y][x]->type();	
 }
 
