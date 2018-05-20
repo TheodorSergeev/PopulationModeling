@@ -1,8 +1,8 @@
-#include"../header/classes.h"
+#include "../header/classes.h"
 
-#include<time.h>
-#include<stdio.h>
-#include<math.h>
+#include <time.h>
+#include <stdio.h>
+#include <cmath>
 
 #define Complexity_Fraction 3
 #define KUS_SIZE 6
@@ -10,6 +10,8 @@ const size_t TIMESTAMP_LEN = 50;
 const coord_t INCORRECT = coord_t(-1, -1);
 const coord_t NO_SPACE = coord_t(-2, -2);
 
+CCellType CCell::default_cell_type = {0, "your mom", 5, 5, 2};
+const int CFood::DEF_FOOD_VAL = 5;
 
 
 //-------------Utility---------------------------------------------------------------------------
@@ -47,8 +49,8 @@ int CEnvironmentArea::Bite(int dmg)
 		int old_hp = hp;
 		hp = (old_hp + dmg > 0) ? 0 : old_hp + dmg;
 		return (-old_hp > dmg) ? -dmg : old_hp;
-	}	
-	
+	}
+
 }
 
 int CEnvironmentArea::ChangeHP(int delta)
@@ -72,7 +74,7 @@ int CEnvironmentArea::ResetHP()
 
 CCell::CCell(CCellType *type):CEnvironmentArea(BIOCELL)
 {
-	
+
 	cell_type = type;
 	hp = cell_type->default_hp;
 	cooldown = 0;
@@ -95,25 +97,25 @@ void CCell::Dump(FILE* output)
 			this, cell_type->type_id, cell_type->type_name.c_str());
 	fprintf(output, "\n\tdefault_hp = %d;", cell_type->default_hp);
 	if(cell_type->default_hp < 1)
-		fprintf(output, "//\t\t\tERROR: NEGATIVE default_hp !!!");	
+		fprintf(output, "//\t\t\tERROR: NEGATIVE default_hp !!!");
 
 	fprintf(output, "\n\tspeed = %d;", cell_type->speed);
 	if(cell_type->speed < 1)
-		fprintf(output, "//\t\t\tERROR: NEGATIVE speed !!!");	
+		fprintf(output, "//\t\t\tERROR: NEGATIVE speed !!!");
 
 	fprintf(output, "\n\tview_range = %d;", cell_type->view_range);
 	if(cell_type->view_range < 1)
-		fprintf(output, "//\t\t\tERROR: NEGATIVE view_range !!!");	
-	
+		fprintf(output, "//\t\t\tERROR: NEGATIVE view_range !!!");
+
 	fprintf(output, "\n\thp = %d;", hp);
 	if(hp < 1)
-		fprintf(output, "//\t\t\tERROR: NEGATIVE hp !!!");	
-	
+		fprintf(output, "//\t\t\tERROR: NEGATIVE hp !!!");
+
 	fprintf(output, "\n\tcooldown = %d;", cooldown);
 	if(cooldown < 0)
-		fprintf(output, "//\t\t\tERROR: NEGATIVE cooldown !!!");	
+		fprintf(output, "//\t\t\tERROR: NEGATIVE cooldown !!!");
 	if(cooldown >= cell_type->speed)
-		fprintf(output, "//\t\t\tERROR: cooldown SHOULD NOT BE MORE THAN speed !!!");	
+		fprintf(output, "//\t\t\tERROR: cooldown SHOULD NOT BE MORE THAN speed !!!");
 	fputs("\n};", output);
 }
 
@@ -181,12 +183,12 @@ coord_t CBacterium::Direction(sur_t *s) // Minimal example; only move where ther
 	}
 	if(fabs(x) > fabs(y))
 	{
-		if(x > 0) return coord_t(1, 0);	
+		if(x > 0) return coord_t(1, 0);
 		else return coord_t(-1, 0);
 	}
 	else
 	{
-		if(y > 0) return coord_t(0, 1);	
+		if(y > 0) return coord_t(0, 1);
 		else return coord_t(0, -1);
 	}
 }
@@ -217,7 +219,7 @@ CEnvironment::CEnvironment(int x = DEF_XSZ, int y = DEF_YSZ)
 {
 	if(x <= 0) x = DEF_XSZ;
 	if(y <= 0) y = DEF_YSZ;
-	
+
 	vector<CEnvironmentArea *> row(x, NULL);
 	row.shrink_to_fit();
 	field = envmap_t(y, row);
@@ -231,7 +233,7 @@ CEnvironment::~CEnvironment()
 coord_t CEnvironment::GetBounds()
 {
 	int Y = field.size();
-	int X = field[0].size();	
+	int X = field[0].size();
 	coord_t res(X, Y);
 	return res;
 }
@@ -240,7 +242,7 @@ void CEnvironment::DumpASCII(FILE *output)
 {
 
 	int Y = field.size();
-	int X = field[0].size();	
+	int X = field[0].size();
 	#define HLINE();\
 	fputc('+', output);\
 	for(int i = 0; i < X; i++)\
@@ -265,14 +267,14 @@ void CEnvironment::DumpASCII(FILE *output)
 					else c = 'F';
 					break;
 				case BIOCELL:
-					c = (((CCell *)field[i][j])->type_id())%10 + '0'; 
+					c = (((CCell *)field[i][j])->type_id())%10 + '0';
 					break;
 				case EMPTY:
 					c = ' ';
 					break;
 				default:
 					c = '!';
-				
+
 			}
 			fputc(c, output);
 			fputc('|', output);
@@ -285,7 +287,7 @@ void CEnvironment::DumpASCII(FILE *output)
 
 int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y)
 {
-	if((y >= field.size()) || (x >= field[0].size()))
+	if((y >= (int) field.size()) || (x >= (int) field[0].size()))
 		return OUT_OF_FIELD;
 	if(field[y][x] != NULL)
 		return OCCUPIED;
@@ -302,7 +304,7 @@ int CEnvironment::DumbSpawnFood()
 {
 	srand(time(NULL));
 	int Y = field.size();
-	int X = field[0].size();	
+	int X = field[0].size();
 	int planted = 0;
 	for(int i = 0; i < Y; i++)
 	{
@@ -313,7 +315,7 @@ int CEnvironment::DumbSpawnFood()
 				CFood *portion = new CFood();
 				int err = this->PlantObject(portion, j, i);
 				if(!err)
-					planted++;		
+					planted++;
 				else
 					return err;
 			}
@@ -325,10 +327,10 @@ int CEnvironment::DumbSpawnFood()
 int CEnvironment::WipeOut()
 {
 	int Y = field.size();
-	int X = field[0].size();	
+	int X = field[0].size();
 	int deleted = 0;
-	
-	
+
+
 	for(int i = 0; i < Y; i++)
 	{
 		for(int j = 0; j < X; j++)
@@ -347,11 +349,11 @@ int CEnvironment::WipeOut()
 int CEnvironment::CleanUp()
 {
 	int Y = field.size();
-	int X = field[0].size();	
+	int X = field[0].size();
 	int deleted = 0;
 
 	for(int i = 0; i < Y; i++)
-	{	
+	{
 		for(int j = 0; j < X; j++)
 		{
 			if((field[i][j] != NULL)&&((field[i][j])->isDead()))
@@ -372,7 +374,7 @@ sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
 	AREA_TYPE tp0 = this->What(x0, y0);
 	if(tp0 == OUT)
 		return NULL;
-	
+
 	sur_t *res = new sur_t();
 	int x, y;
 
@@ -398,19 +400,19 @@ sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
 			if((v->type == FOOD))
 			{
 				if(((CFood *) field[y][x])->isPoison())
-					v->type = POISON;	
+					v->type = POISON;
 			}
 			res->push_back(*v);
 			delete v;
 		}
-	}	
+	}
 	return res;
 }
 
 bool CEnvironment::InField(int x, int y)
 {
 	int Y = field.size();
-	int X = field[0].size();	
+	int X = field[0].size();
 	if((x < 0)||(y < 0)||(x >= X)||(y >= Y))
 		return false;
 	return true;
@@ -422,9 +424,7 @@ AREA_TYPE CEnvironment::What(int x, int y)
 		return OUT;
 	if(field[y][x] == NULL)
 		return EMPTY;
-	if(field[y][x]->type() == FOOD && ((CFood *)field[y][x])->IsPoison())
-		return POISON;
-	return field[y][x]->type();	
+	return field[y][x]->type();
 }
 
 int CEnvironment::CellAction(int x, int y)
@@ -454,7 +454,7 @@ int CEnvironment::CellAction(int x, int y)
 		curr->SetCooldown();
 		return 0;
 	}
-	
+
 	if(tp == FOOD || tp == BIOCELL)
 	{
 		if(tp == BIOCELL)
@@ -467,6 +467,7 @@ int CEnvironment::CellAction(int x, int y)
 		field[y][x]->ChangeHP(delta);			//TODO: cells from same colony interaction?
 		return 0;
 	}
+	return -100;
 }
 
 coord_t CEnvironment::GetFreeAdj(int x, int y)
@@ -495,8 +496,8 @@ coord_t CEnvironment::Divide(int x, int y)
 	coord_t pos = this->GetFreeAdj(x, y);
 	if(pos == INCORRECT || pos == NO_SPACE)
 		return pos;
-	CCell *child = curr->GetCopy(); 
-	this->PlantObject((CEnvironmentArea *) child, pos);	
+	CCell *child = curr->GetCopy();
+	this->PlantObject((CEnvironmentArea *) child, pos);
 	curr->ResetHP();
 	return pos;
 }
@@ -505,7 +506,7 @@ int CEnvironment::Iteration()					//will move to CExperiment later
 								//TODO call cells in random order
 {
 	int Y = field.size();
-	int X = field[0].size();	
+	int X = field[0].size();
 	for(int i = 0; i < Y; i++)
 	{
 		for(int j = 0; j < X; j++)
@@ -518,16 +519,16 @@ int CEnvironment::Iteration()					//will move to CExperiment later
 			CCell *curr = ((CCell *) field[i][j]);
 			curr->DecCooldown();
 			this->Divide(j, i);				//TODO cell division
-		}	
+		}
 	}
-	
+
 	for(int i = 0; i < Y; i++)
 	{
 		for(int j = 0; j < X; j++)
-		{	
+		{
 			this->CellAction(j, i);
 		}
-	}	
+	}
 	this->CleanUp();
 	return 0;
 }

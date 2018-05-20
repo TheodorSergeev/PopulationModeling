@@ -1,257 +1,469 @@
-#include <stdio.h>
+#include <wx/wx.h>
+#include <wx/file.h>
+#include <wx/wfstream.h>
+#include <wx/txtstrm.h>
+#include <wx/sstream.h>
+#include <wx/string.h>
+#include <wx/gdicmn.h> // colours database
 
-#include <utility>
-#include <vector>
 #include <string>
+#include <vector>
+#include <sstream>
+#include <algorithm>
+#include <map>
+#include <fstream>
 
-using std::pair;
-using std::vector;
-using std::string;
-
-//-------------------------------------------------------------------------------------------------
-//
-//-----Global-----
-//
-//-------------------------------------------------------------------------------------------------
-
-#define PURE
-
-enum AREA_TYPE{EMPTY, FOOD, BIOCELL, WALL};
-typedef pair <int, int> coord_t;
-typedef vector < vector <CEnvironmentArea*> >  envmap_t;
-
-//-------------------------------------------------------------------------------------------------
-//
-//-----Application-----
-//
-//-------------------------------------------------------------------------------------------------
+#include "header/classes.h"
+//#include "source/classes.cpp"
 
 
-// A cell of the 2d Environment array. Either empty/cell/food/poison/...
-class CEnvironmentArea
-{
+// number of cells of the envoronment field grid
+const int CELLS_NUM_X = 20;
+const int CELLS_NUM_Y = 20;
 
-protected:
-
-	AREA_TYPE area_type;
-
-public:
-
-    AREA_TYPE type(){ return area_type; }
-	virtual coord_t Action() PURE;
-
-};
-
-
-class CEnvironment
+class CWinApplication: public wxApp
 {
 
 private:
 
-	envmap_t field;
+    float update_freq; // moves per second
+    CEnvironment* experiment;
 
 public:
 
-	int SpawnFood();						            // somehow add food on the field
-	const envmap_t& ViewField(int x, int y, int range)
-	{
-
-
-
-	}
-	// returns [x+-range][y+-range] 2d array for the cell to know its surroindings
-	//
-	//  |N|N|N|
-	//  | |c| |
-	//  | | | |
-	//
-	// N == NULL - out of bounds
-	// c == cell, coordinates (x,y)
+    virtual bool OnInit();
+    virtual int  OnExit();
 
 };
 
 
-class CFood: public CEnvironmentArea
+class CFieldDrawPane;  //for crossreferences between CDraw and CCMainWindow
+class CMainWindow;
+CEnvironment* SetInitialConditions();
+
+//colors for drawing cells
+const int NUM_COLOURS = 11;
+const wxColour COLONY_COLOURS[NUM_COLOURS] = {wxT("GREY"),
+                                              wxT("GOLD"), wxT("INDIAN RED"), wxT("LIGHT BLUE") , wxT("LIGHT GREEN"), wxT("ORCHID"),
+                                              wxT("GOLDENROD"), wxT("FIREBRICK"), wxT("NAVY"), wxT("FOREST GREEN"), wxT("DARK ORCHID")};
+
+//main window size
+const int WINDOW_HEIGHT = 600;
+const int WINDOW_WIDTH  = 800;
+
+// field positioning
+const double BORDER_X_LEFT  = 50;
+const double BORDER_Y_TOP   = 50;
+const double FIELD_X_SIZE   = std::min(WINDOW_HEIGHT - 2 * BORDER_Y_TOP, WINDOW_WIDTH - 2 * BORDER_X_LEFT);
+const double FIELD_Y_SIZE   = FIELD_X_SIZE;
+
+struct SExperimentStatistics
 {
 
-private:
-
-    static const int DEF_FOOD_VAL;
-	int hp_value; // food - hp_value > 0; posion - hp_value < 0
-
-public:
-
-	CFood(int hp_val = DEF_FOOD_VAL)
-	{
-
-        hp_value = hp_val;
-        area_type = FOOD;
-
-	}
-
-	virtual coord_t Action(){} // food does not take any action
-
-	int HpValue(){ return hp_value; }
-
-	bool isPoison (){ if(hp_value <  0) return true; return false; }
-	bool isFood   (){ if(hp_value >  0) return true; return false; }
-    bool isCorrect(){ if(hp_value != 0) return true; return false; }
+    int total = CELLS_NUM_X * CELLS_NUM_Y;
+    int food   = 0;
+    int poison = 0;
+    int cells  = 0;
+    std::map <string, int> cell; // name of a biocell type / number of them
 
 };
 
-// in .cpp file
-// constants definitions
-const int CFood::DEF_FOOD_VAL = 12;
-
-
-// Basic thin class-parent for cell types of the colonies
-class CCell: public CEnvironmentArea
+class CMainWindow: public wxFrame
 {
 
 private:
 
-	int type_id;
-	string type_name;
+    wxMenuBar*  headmenu_bar;
+    wxMenu*     headmenu_item;
+    wxMenuItem* headmenu_but_quit; // "but" = button
 
-	float hp;
-	float speed;
-	float view_range;
+// Process speed controls
+    wxStaticText *text_speed;
+    wxButton *but_speed_inc;
+    wxButton *but_speed_dec;
+    wxButton *but_speed_pause;
 
-public:
+    CFieldDrawPane* fdraw_pane;    // field draw pane
+    wxPanel* base_panel;           // Это в "подвале" окошка
 
-	CCell()
-	{
+// Experiment
+    int iter_done;
+    int iter_freq;  // time between two experiment iterations in milliseconds
+    wxTimer timer;
 
-        type_id    = 0;
-        type_name  = "default";
-        hp         = 3;
-        speed      = 1;
-        view_range = 1;
-        area_type  = BIOCELL;
+    SExperimentStatistics stats;
+    std::fstream stat_log;
 
-	}
-
-    void Dump()
+    wxString IterFreqStr()
     {
 
-        printf("id(%d) name(%s) hp(%g) speed(%g) view(%g)\n", type_id, type_name.c_str(), hp, speed, view_range);
+        string speed_str = "&Iteration every " + std::to_string(iter_freq) + " ms.";
+        wxString speed_wxstr(speed_str.c_str(), wxConvUTF8);
+        return speed_wxstr;
 
     }
 
-	virtual envmap_t View() const       // Get surroundings to decide upon the action
-	{
+    void GetStatistics();
+    void WriteStatistics();
 
+ public:
 
+    CEnvironment* experiment;
 
-	}
+    CMainWindow(const wxString& title);
 
-	virtual coord_t Action() const      // Action (movement) and impact - e.t. increae hp on food consumption
-	{
+    void OnQuit(wxCommandEvent& event);
+    void OnButtonClick_SpeedInc(wxCommandEvent& event);
+    void OnButtonClick_SpeedDec(wxCommandEvent& event);
+    void OnButtonClick_Pause   (wxCommandEvent& event);
 
-        envmap_t surroundings = View();
+    void OnTimer(wxTimerEvent& event);
 
-        if(surroundings[0][1]->type() != WALL)
-            return coord_t(0, 1);
-
-	}
+    DECLARE_EVENT_TABLE()
 
 };
 
-// Child class - specific cell type, specific colony. Reimplement virtual functions
-class CBactterium: public CCell
-{  };
+enum
+{
+
+    BUTTON_SpeedInc = wxID_HIGHEST + 1, // declares an id which will be used to call our button
+    BUTTON_SpeedDec,
+    BUTTON_Pause,
+    TIMER
+
+};
 
 
-// Deals with iterations, colonies and statistics
-class CExperiment
+class CFieldDrawPane: public wxPanel
 {
 
 private:
 
-	int elapsed_time;
-	vector <int> colon_pop;   // colonies population statistic
+    int cell_x_size; // in pixels - so using "int"
+    int cell_y_size;
 
-	const vector <int> 	  COLONY_COLOR; // colors of colonies - position == cell type id
-	const vector <string> COLONY_NAMES; // names  of colonies - position == cell type id
+    wxSize canvas_size; // size of the draing field
+
+    CMainWindow *mn; // указатель на окно-родителя
 
 public:
 
-	void Iteration()
-	{
+    CFieldDrawPane(wxPanel* parent, CMainWindow* main);
+    void OnPaint(wxPaintEvent& event);
+
+    void DrawGrid(wxDC& dc);
+    void DrawCell(int x, int y, int col_num, wxDC& dc);
+
+};
+
+//Идентификаторы - на будещее
+const int ID_MENU_LOAD = 1002; // загрузка
+const int ID_MENU_EDIT = 1003; // редактирование
+
+// Конструктор фрейма
+CMainWindow::CMainWindow(const wxString& title):wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(WINDOW_WIDTH, WINDOW_HEIGHT),
+                                            (wxDEFAULT_FRAME_STYLE & ~wxRESIZE_BORDER)), timer(this, TIMER)
+{
+
+    iter_done = 0;
+    iter_freq = 500;
+
+    stats.total  = CELLS_NUM_X * CELLS_NUM_Y;
+    stats.food   = 0;
+    stats.poison = 0;
+    stats.cells  = 0;
+
+    stat_log.open("Plots/statistics_log.txt", std::fstream::out | std::ofstream::trunc);
+    if(!stat_log.is_open())
+    {
+
+        wxMessageDialog *error = new wxMessageDialog(NULL, wxT("Couldn't open statistics log file"), wxT("Info"), wxOK);
+        error->ShowModal();
+
+    }
+
+    headmenu_bar  = new wxMenuBar; // создали полоску для менюшки
+    headmenu_item = new wxMenu;    // создали менюшку
+
+    headmenu_item->Append(wxID_ANY, wxT("&todo")); // закинули менюшку на полоску (пока не работает - для "красоты")
+    headmenu_item->AppendSeparator();
+
+    // Для всех пунктов меню указывем идентификатор чтобы связать обработчик событие с конкретным элементом
+    headmenu_but_quit = new wxMenuItem(headmenu_item, wxID_EXIT, wxT("&Quit"));    // добавили к менюшке раздел quit
+    headmenu_item->Append(headmenu_but_quit);
+    headmenu_bar->Append(headmenu_item, wxT("&File")); // добавили пункт меню на полоску меню
+    SetMenuBar(headmenu_bar);                          // установили полоску в окно
+    Connect(wxID_EXIT, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(CMainWindow::OnQuit)); // подключили менюшку exit
+
+    base_panel = new wxPanel(this, wxID_ANY);          // создание панельки для текста, кнопок и рисовалки
+    fdraw_pane = new CFieldDrawPane(base_panel, this); // тоже панель, но наша, помещаем ее на панель base_panel и задаем указатель на главный фрейм
+
+    text_speed    = new wxStaticText(base_panel, wxID_ANY, IterFreqStr(), wxPoint(600, 50), wxSize(170, 50), wxALIGN_LEFT | wxST_NO_AUTORESIZE);
+    but_speed_dec = new wxButton(base_panel, BUTTON_SpeedDec, wxT("&<<"), wxPoint(600, 100), wxSize(30, 30), 0); // with the text "hello World"
+    but_speed_dec = new wxButton(base_panel, BUTTON_Pause,    wxT("&■"),  wxPoint(635, 100), wxSize(30, 30), 0); // with the text "hello World"
+    but_speed_inc = new wxButton(base_panel, BUTTON_SpeedInc, wxT("&>>"), wxPoint(670, 100), wxSize(30, 30), 0); // with the text "hello World"
 
 
+    experiment = SetInitialConditions(); // bacteries and food placement
 
-	}
+    timer.Start(iter_freq);
 
-	int ElapsedTime()
-	{
+};
 
-		//assert(elapsed_time >= 0);
-		return elapsed_time;
+void CMainWindow::OnQuit(wxCommandEvent& event)
+{
 
-	}
+    if(experiment)
+        delete experiment;
 
-	// statistic functions
+    stat_log.close();
+
+    Close(true);
+
+};
+
+void CMainWindow::OnButtonClick_SpeedInc(wxCommandEvent& event)
+{
+
+    iter_freq += 250;
+    text_speed->SetLabel(IterFreqStr());
+    timer.Start(iter_freq);
+    this->Refresh();
+
+};
+
+void CMainWindow::OnButtonClick_SpeedDec(wxCommandEvent& event)
+{
+
+    if(iter_freq - 250 >= 0)
+        iter_freq -= 250;
+
+    text_speed->SetLabel(IterFreqStr());
+    timer.Start(iter_freq);
+    this->Refresh();
+
+};
+
+void CMainWindow::OnButtonClick_Pause(wxCommandEvent& event)
+{
+
+    if(timer.IsRunning())
+    {
+
+        but_speed_dec->SetLabel(wxT("&▶"));
+        text_speed->SetLabel(wxT("&Iterations paused"));
+        timer.Stop();
+
+    }
+    else
+    {
+
+        but_speed_dec->SetLabel(wxT("&■"));
+        text_speed->SetLabel(IterFreqStr());
+        timer.Start();
+
+    }
+
+    this->Refresh();
+
+};
+
+void CMainWindow::OnTimer(wxTimerEvent& event)
+{
+
+    experiment->Iteration();
+    this->Refresh();
+    GetStatistics();
+    WriteStatistics();
+    iter_done++;
+
+};
+
+void CMainWindow::GetStatistics()
+{
+
+    stats.food  = 0;
+    stats.cells = 0;
+
+    for(int i = 0; i < CELLS_NUM_X; ++i)
+    {
+
+        for(int j = 0; j < CELLS_NUM_Y; ++j)
+        {
+
+            AREA_TYPE type = experiment->What(i, j);
+
+            switch(type)
+			{
+				case FOOD:
+					//if(((CFood *)(field[i][j]))->isPoison()) poison++; else
+					stats.food++;
+					break;
+				case BIOCELL:
+					stats.cells++;
+					break;
+				default:
+					break;
+
+                // + write biocell types numbers in the map
+
+			}
+
+        }
+
+    }
+
+};
+
+void CMainWindow::WriteStatistics()
+{
+
+    if(!stat_log.is_open())
+        return;
+
+    stat_log << iter_done    << " "
+             << stats.total  << " "
+             << stats.food   << " "
+             << stats.poison << " "
+             << stats.cells  << "\n";
 
 };
 
 
-//-------------------------------------------------------------------------------------------------
-//
-//-----Application-----
-//
-//-------------------------------------------------------------------------------------------------
 
-
-// Deals with window refreshment, button interaction and painting
-class CApp
+CFieldDrawPane::CFieldDrawPane(wxPanel *parent, CMainWindow *fr):wxPanel(parent, -1, wxPoint(BORDER_X_LEFT, BORDER_Y_TOP), wxSize(FIELD_X_SIZE, FIELD_Y_SIZE), wxBORDER_NONE)
 {
 
-	float speed;     		// turns per second
-
-
-	void RunExperiment(float speed, int time_limit)
-	{
-
-		for(int t = 0;  t <= time_limit; ++t)
-		{
-
-			// iteration
-			// field visualisation
-			// data collection
-			// data visualisaton
-			// pause check
-			// save check
-
-		}
-
-	}
+    Connect(wxEVT_PAINT,wxPaintEventHandler(CFieldDrawPane::OnPaint)); // подключили панель к событиям рисования
+    mn = fr;
 
 };
 
-/*
-field = Environment.GetSurroundings(); // 3x3
-
-if(field[0][1].type == FOOD)
+void CFieldDrawPane::DrawGrid(wxDC& dc)
 {
 
-	hp += field[0][1].HpValue();
+    for(int x = 0; x <= canvas_size.x; x += cell_x_size)
+    {
 
-	fiels[0][1] = this;
-	field[0][0] = NULL;
+//         if(x != 0)
+            dc.DrawLine(x, 0, x, canvas_size.y);
 
-}*/
+    }
+
+    for(int y = 0; y <= canvas_size.y; y += cell_y_size)
+    {
+
+//        if(y != 0)
+         dc.DrawLine(0, y, canvas_size.x, y);
+
+    }
+
+    dc.DrawLine(canvas_size.x - 1, 0, canvas_size.x - 1, canvas_size.y);
+    dc.DrawLine(0, canvas_size.y - 1, canvas_size.x, canvas_size.y - 1);
+
+}
+
+void CFieldDrawPane::DrawCell(int x_pos, int y_pos, int col_num, wxDC& dc)
+{
+
+    if(col_num > NUM_COLOURS)
+        throw "Error with colors number";
+
+    dc.SetBrush(wxBrush(COLONY_COLOURS[col_num]));
+    dc.SetPen(wxPen(*wxRED, 0, wxTRANSPARENT));
+    dc.DrawRectangle(cell_x_size * x_pos + 1, cell_y_size * y_pos + 1, cell_x_size - 1, cell_y_size - 1);
+
+}
+
+void CFieldDrawPane::OnPaint(wxPaintEvent& event)
+{
+
+    wxPaintDC dc(this); // положили планшет wxPaintDC на нашу панель
+
+    canvas_size = dc.GetSize();
+    cell_x_size = std::floor(canvas_size.x / CELLS_NUM_X);
+    cell_y_size = std::floor(canvas_size.y / CELLS_NUM_Y);
+
+    if(cell_x_size <= 0 || cell_y_size <= 0)
+        throw "Error with cell size";
+
+    DrawGrid(dc);
+
+    for(int i = 0; i < CELLS_NUM_X; ++i)
+    {
+
+        for(int j = 0; j < CELLS_NUM_Y; ++j)
+        {
+
+            AREA_TYPE env_area_type = mn->experiment->What(j, i);
+
+            DrawCell(i, j, env_area_type % NUM_COLOURS, dc);
+
+        }
+
+    }
+
+    //std::stringstream str;
+    //str << canvas_size.x << " " << canvas_size.y << "\n";
+    //str << cell_x_size << " " << cell_y_size << "\n";
+    //wxFont font(20, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false);
+    //dc.SetFont(font);
+    //dc.SetTextForeground(wxColour(255, 102, 0));
+    //dc.DrawText(wxString::FromUTF8(str.str().c_str()), 10, 10);
+
+};
 
 
-//To do:
-// 1) Deal with synchronisation issues - which cell does it's action first in conflict situation, for example if two cells are to consume same food at the same type
-// 2) Deal with speed issues
-// 3) Movement
-// 4)
+bool CWinApplication::OnInit()
+{
 
-int main()
+    CMainWindow* wind = new CMainWindow(wxT("Population modeling")); // note that wxWidgets will free it automatically
+    wind->Show(true);
+    //SetTopWindow(wind);
+
+    return true;
+
+};
+
+int  CWinApplication::OnExit()
 {
 
     return 0;
 
+};
+
+
+BEGIN_EVENT_TABLE( CMainWindow, wxFrame )
+    EVT_TIMER ( TIMER, CMainWindow::OnTimer )
+    EVT_BUTTON( BUTTON_SpeedInc, CMainWindow::OnButtonClick_SpeedInc ) // Tell the OS to run MainFrame::OnExit when The button is pressed
+    EVT_BUTTON( BUTTON_SpeedDec, CMainWindow::OnButtonClick_SpeedDec ) // Tell the OS to run MainFrame::OnExit when
+    EVT_BUTTON( BUTTON_Pause,    CMainWindow::OnButtonClick_Pause    ) // Tell the OS to run MainFrame::OnExit when
+END_EVENT_TABLE()
+
+IMPLEMENT_APP(CWinApplication)
+
+
+
+CEnvironment* SetInitialConditions()
+{
+
+    CCellType test_type;
+	test_type.type_id    = 1;
+	test_type.type_name  = "eva 01";
+	test_type.default_hp = 9;
+	test_type.speed      = 3;
+	test_type.view_range = 3;
+
+	CCell *mom = new CBacterium();
+	CCell *eva = new CBacterium(&test_type);
+    CFood *food_p2 = new CFood(100);
+
+    CEnvironment* experiment = new CEnvironment(CELLS_NUM_X, CELLS_NUM_Y);
+	int x = 2, y = 1, rng = 2;
+	experiment->PlantObject(mom, x, y);
+	experiment->PlantObject(food_p2, x, y - 1);
+
+    return experiment;
+
 }
+
