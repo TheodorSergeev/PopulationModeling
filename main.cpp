@@ -4,7 +4,9 @@
 #include <wx/txtstrm.h>
 #include <wx/sstream.h>
 #include <wx/string.h>
-#include <wx/gdicmn.h> // colours database
+#include <wx/gdicmn.h>
+#include <wx/aboutdlg.h>
+#include <wx/event.h>
 
 #include <string>
 #include <vector>
@@ -14,13 +16,13 @@
 #include <fstream>
 
 #include "header/classes.h"
-//#include "source/classes.cpp"
 
 
-// number of cells of the envoronment field grid
+// Number of cells of the envoronment field grid
 const int CELLS_NUM_X = 20;
 const int CELLS_NUM_Y = 20;
 
+// wxWidgets application class
 class CWinApplication: public wxApp
 {
 
@@ -37,21 +39,23 @@ public:
 };
 
 
-class CFieldDrawPane;  //for crossreferences between CDraw and CCMainWindow
-class CMainWindow;
-CEnvironment* SetInitialConditions();
+// Declaration for crossreferences between CFieldDrawPane and CCMainWindow
+class CMainWindow;                     // Window containing menu, buttons, drawing pane etc.
+class CFieldDrawPane;                  // Draws grid and cells
+CEnvironment* SetInitialConditions();  // Initinal conditions - position of bacteries in the beginning of the experiment
 
-//colors for drawing cells
+
+// Colors for drawing cells
 const int NUM_COLOURS = 11;
 const wxColour COLONY_COLOURS[NUM_COLOURS] = {wxT("GREY"),
                                               wxT("GOLD"), wxT("INDIAN RED"), wxT("LIGHT BLUE") , wxT("LIGHT GREEN"), wxT("ORCHID"),
                                               wxT("GOLDENROD"), wxT("FIREBRICK"), wxT("NAVY"), wxT("FOREST GREEN"), wxT("DARK ORCHID")};
 
-//main window size
+// Main window size
 const int WINDOW_HEIGHT = 600;
 const int WINDOW_WIDTH  = 800;
 
-// field positioning
+// Drawing field positioning in the main window
 const double BORDER_X_LEFT  = 50;
 const double BORDER_Y_TOP   = 50;
 const double FIELD_X_SIZE   = std::min(WINDOW_HEIGHT - 2 * BORDER_Y_TOP, WINDOW_WIDTH - 2 * BORDER_X_LEFT);
@@ -60,22 +64,26 @@ const double FIELD_Y_SIZE   = FIELD_X_SIZE;
 struct SExperimentStatistics
 {
 
-    int total = CELLS_NUM_X * CELLS_NUM_Y;
-    int food   = 0;
-    int poison = 0;
-    int cells  = 0;
-    std::map <string, int> cell; // name of a biocell type / number of them
+    int total = CELLS_NUM_X * CELLS_NUM_Y; // total number of cells in the grid
+    int food   = 0;                        // number of food cells
+    int poison = 0;                        // number of poison cells
+    int cells  = 0;                        // number of bacteries cells
+    std::map <string, int> cell;           // name of a bacterie type / number of them
 
 };
 
+
+// Window containing menu, buttons, drawing pane etc
 class CMainWindow: public wxFrame
 {
 
 private:
 
+// Head menu bar elements
     wxMenuBar*  headmenu_bar;
     wxMenu*     headmenu_item;
-    wxMenuItem* headmenu_but_quit; // "but" = button
+    wxMenuItem* headmenu_but_about; // "but" = button
+    wxMenuItem* headmenu_but_quit;
 
 // Process speed controls
     wxStaticText *text_speed;
@@ -83,16 +91,17 @@ private:
     wxButton *but_speed_dec;
     wxButton *but_speed_pause;
 
-    CFieldDrawPane* fdraw_pane;    // field draw pane
-    wxPanel* base_panel;           // Это в "подвале" окошка
+// Drawing pane
+    CFieldDrawPane* fdraw_pane;
+    wxPanel* base_panel;
 
-// Experiment
-    int iter_done;
+// Experiment elements
+    int iter_done;  // iterations already done
     int iter_freq;  // time between two experiment iterations in milliseconds
-    wxTimer timer;
+    wxTimer timer;  // times the time between iteration
 
-    SExperimentStatistics stats;
-    std::fstream stat_log;
+    SExperimentStatistics stats; // experiment statistics
+    std::fstream stat_log;       // statistics is written to this file
 
     wxString IterFreqStr()
     {
@@ -112,7 +121,9 @@ private:
 
     CMainWindow(const wxString& title);
 
-    void OnQuit(wxCommandEvent& event);
+    void OnOpen                ();
+    void OnAbout               (wxCommandEvent& WXUNUSED(event));
+    void OnQuit                (wxCommandEvent& event);
     void OnButtonClick_SpeedInc(wxCommandEvent& event);
     void OnButtonClick_SpeedDec(wxCommandEvent& event);
     void OnButtonClick_Pause   (wxCommandEvent& event);
@@ -123,17 +134,19 @@ private:
 
 };
 
+// Events IDs
 enum
 {
 
     BUTTON_SpeedInc = wxID_HIGHEST + 1, // declares an id which will be used to call our button
     BUTTON_SpeedDec,
     BUTTON_Pause,
-    TIMER
+    TIMER,
+    WIN_OPEN
 
 };
 
-
+// Draws grid and cells
 class CFieldDrawPane: public wxPanel
 {
 
@@ -156,14 +169,11 @@ public:
 
 };
 
-//Идентификаторы - на будещее
-const int ID_MENU_LOAD = 1002; // загрузка
-const int ID_MENU_EDIT = 1003; // редактирование
-
-// Конструктор фрейма
 CMainWindow::CMainWindow(const wxString& title):wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(WINDOW_WIDTH, WINDOW_HEIGHT),
                                             (wxDEFAULT_FRAME_STYLE & ~wxRESIZE_BORDER)), timer(this, TIMER)
 {
+
+    OnOpen();
 
     iter_done = 0;
     iter_freq = 500;
@@ -173,27 +183,23 @@ CMainWindow::CMainWindow(const wxString& title):wxFrame(NULL, wxID_ANY, title, w
     stats.poison = 0;
     stats.cells  = 0;
 
-    stat_log.open("Plots/statistics_log.txt", std::fstream::out | std::ofstream::trunc);
-    if(!stat_log.is_open())
-    {
-
-        wxMessageDialog *error = new wxMessageDialog(NULL, wxT("Couldn't open statistics log file"), wxT("Info"), wxOK);
-        error->ShowModal();
-
-    }
-
     headmenu_bar  = new wxMenuBar; // создали полоску для менюшки
     headmenu_item = new wxMenu;    // создали менюшку
 
-    headmenu_item->Append(wxID_ANY, wxT("&todo")); // закинули менюшку на полоску (пока не работает - для "красоты")
-    headmenu_item->AppendSeparator();
 
     // Для всех пунктов меню указывем идентификатор чтобы связать обработчик событие с конкретным элементом
-    headmenu_but_quit = new wxMenuItem(headmenu_item, wxID_EXIT, wxT("&Quit"));    // добавили к менюшке раздел quit
+    headmenu_but_about = new wxMenuItem(headmenu_item, wxID_ABOUT, wxT("&About"));    // добавили к менюшке раздел about
+    headmenu_but_quit  = new wxMenuItem(headmenu_item, wxID_EXIT,  wxT("&Quit"));    // добавили к менюшке раздел quit
+
+    headmenu_item->Append(headmenu_but_about);
+    headmenu_item->AppendSeparator();
     headmenu_item->Append(headmenu_but_quit);
+
     headmenu_bar->Append(headmenu_item, wxT("&File")); // добавили пункт меню на полоску меню
     SetMenuBar(headmenu_bar);                          // установили полоску в окно
-    Connect(wxID_EXIT, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(CMainWindow::OnQuit)); // подключили менюшку exit
+
+    Connect(wxID_ABOUT, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(CMainWindow::OnAbout)); // подключили менюшку exit
+    Connect(wxID_EXIT,  wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(CMainWindow::OnQuit)); // подключили менюшку exit
 
     base_panel = new wxPanel(this, wxID_ANY);          // создание панельки для текста, кнопок и рисовалки
     fdraw_pane = new CFieldDrawPane(base_panel, this); // тоже панель, но наша, помещаем ее на панель base_panel и задаем указатель на главный фрейм
@@ -203,12 +209,80 @@ CMainWindow::CMainWindow(const wxString& title):wxFrame(NULL, wxID_ANY, title, w
     but_speed_dec = new wxButton(base_panel, BUTTON_Pause,    wxT("&■"),  wxPoint(635, 100), wxSize(30, 30), 0); // with the text "hello World"
     but_speed_inc = new wxButton(base_panel, BUTTON_SpeedInc, wxT("&>>"), wxPoint(670, 100), wxSize(30, 30), 0); // with the text "hello World"
 
-
     experiment = SetInitialConditions(); // bacteries and food placement
 
     timer.Start(iter_freq);
 
 };
+
+void CMainWindow::OnOpen()
+{
+
+    string log_fname = "Plots/statistics_log.txt";
+
+
+    int answer = wxMessageBox(_("Do you want to save statistics to the default file"), _("Statistics file"),
+                              wxICON_QUESTION | wxYES_DEFAULT | wxYES_NO , this);
+
+    if(answer == wxNO) // if the user wants to select a new log file
+    {
+
+        // Creates a "open file" dialog with 1 file types
+        wxFileDialog* OpenDialog = new wxFileDialog(this, _("Choose a file to open"), wxEmptyString, _("Plots/statistics_log.txt"),
+                                                    _("Text files (*.txt)|*.txt"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
+
+        if(OpenDialog->ShowModal() == wxID_OK) // if the user clicks "Save" instead of "Cancel"
+        {
+
+            log_fname = string(OpenDialog->GetPath().mb_str());  // Sets our current document to the file the user selected
+
+        }
+
+        OpenDialog->Destroy(); // clean up
+
+    }
+
+    stat_log.open(log_fname.data(), std::fstream::out | std::ofstream::trunc);
+
+    if(!stat_log.is_open())
+    {
+
+        wxMessageDialog *error = new wxMessageDialog(NULL, wxT("Couldn't open statistics log file"), wxT("Info"), wxOK);
+        error->ShowModal();
+
+    }
+
+    //wxFileDialog
+      //  openFileDialog(this, _("Open XYZ file"), "", "",
+        //               "XYZ files (*.xyz)|*.xyz", wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+   // if (openFileDialog.ShowModal() == wxID_CANCEL)
+//        return;     // the user changed idea...
+
+    // proceed loading the file chosen by the user;
+    // this can be done with e.g. wxWidgets input streams:
+   // wxFileInputStream input_stream(openFileDialog.GetPath());
+   // if (!input_stream.IsOk())
+    //{
+      //  wxLogError("Cannot open file '%s'.", openFileDialog.GetPath());
+       // return;
+    //}
+
+};
+
+void CMainWindow::OnAbout(wxCommandEvent& WXUNUSED(event))
+{
+
+    wxAboutDialogInfo aboutInfo;
+    aboutInfo.SetName(wxT("Population modeling"));
+    aboutInfo.SetVersion(wxT("1.0.0 beta 1"));
+    aboutInfo.SetDescription(wxT("Application for study and visualization of the model of colonies development."));
+    aboutInfo.SetCopyright(wxT("DCAM MIPT (C) 2018"));
+    aboutInfo.SetWebSite(wxT("https://github.com/TheodorSergeev/PopulationModeling"));
+    aboutInfo.AddDeveloper(wxT("Fedor Sergeev"));
+    aboutInfo.AddDeveloper(wxT("Vitaly Aksenov"));
+    wxAboutBox(aboutInfo);
+
+}
 
 void CMainWindow::OnQuit(wxCommandEvent& event)
 {
@@ -434,14 +508,13 @@ int  CWinApplication::OnExit()
 
 
 BEGIN_EVENT_TABLE( CMainWindow, wxFrame )
-    EVT_TIMER ( TIMER, CMainWindow::OnTimer )
-    EVT_BUTTON( BUTTON_SpeedInc, CMainWindow::OnButtonClick_SpeedInc ) // Tell the OS to run MainFrame::OnExit when The button is pressed
-    EVT_BUTTON( BUTTON_SpeedDec, CMainWindow::OnButtonClick_SpeedDec ) // Tell the OS to run MainFrame::OnExit when
-    EVT_BUTTON( BUTTON_Pause,    CMainWindow::OnButtonClick_Pause    ) // Tell the OS to run MainFrame::OnExit when
+    EVT_TIMER ( TIMER,           CMainWindow::OnTimer                )
+    EVT_BUTTON( BUTTON_SpeedInc, CMainWindow::OnButtonClick_SpeedInc )
+    EVT_BUTTON( BUTTON_SpeedDec, CMainWindow::OnButtonClick_SpeedDec )
+    EVT_BUTTON( BUTTON_Pause,    CMainWindow::OnButtonClick_Pause    )
 END_EVENT_TABLE()
 
 IMPLEMENT_APP(CWinApplication)
-
 
 
 CEnvironment* SetInitialConditions()
