@@ -98,6 +98,7 @@ public:
 
 	coord_t GetBounds();
 	void DumpASCII(FILE *);
+	void AllCellsDump(FILE *);
 	void Print() { this->DumpASCII(stdout); }
 
 	bool InField(int, int);

@@ -308,6 +308,24 @@ void CEnvironment::DumpASCII(FILE *output)	// dumps field in ASCII pseudo-graphi
 	#undef HLINE();
 }
 
+void CEnvironment::AllCellsDump(FILE *fp)
+{
+	
+	int Y = field.size();
+	int X = field[0].size();
+	for(int i = 0; i < Y; i++)
+	{
+		for(int j = 0; j < X; j++)
+		{
+			if(this->What(j, i) == BIOCELL)
+			{
+				fprintf(fp, "X = %d, Y = %d\n", j, i);
+				((CCell *)(field[i][j]))->Dump(fp);
+			}
+		}
+	}
+}
+
 int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y) 	// Puts a COPY of your 
 									// object to (x, y) if cell
 									// is free
@@ -652,7 +670,6 @@ CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
 			res = fld->PlantObject((CEnvironmentArea *)inst, x, y);
 			if(res == OUT_OF_FIELD)
 				throw("BAD_DATA COORD");
-			
 		}
 	}
 	int NFood = -1, food_val = -1;

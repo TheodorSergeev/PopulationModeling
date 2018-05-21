@@ -3,11 +3,11 @@
 #include<stdio.h>
 #include<string>
 
-CCellType CCell::default_cell_type = {0, "your mom", 5, 5, 2};
-const int CFood::DEF_FOOD_VAL = 5;
 
 int main()
 {
+	FILE *dmp = fopen("dumps", "w");
+
 	CEnvironment *fld;
 	try
 	{
@@ -18,6 +18,17 @@ int main()
 		return -1;
 	}
 	fld->Print(); 
+	fputs("INIT:\n", dmp);
+	fld->AllCellsDump(dmp);
+
+	fld->Iteration();
+
+	fputs("\n\nONE ITER::\n", dmp);
+	fld->AllCellsDump(dmp);
+	fld->Print();
+
+	fclose(dmp);
+
 	return 0;
 }
 
