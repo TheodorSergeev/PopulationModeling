@@ -98,6 +98,7 @@ public:
 
 	coord_t GetBounds();
 	void DumpASCII(FILE *);
+	void AllCellsDump(FILE *);
 	void Print() { this->DumpASCII(stdout); }
 
 	bool InField(int, int);
@@ -132,7 +133,7 @@ public:
 	coord_t Divide(int, int);
 
 	int Iteration();						// will move to CExperiment later
-
+	static CEnvironment *StartCondFromFile(string, int);
 };
 
 //-------------------------------------------------------------------------------------------------

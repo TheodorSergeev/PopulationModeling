@@ -4,7 +4,7 @@
 
 
 CCellType CCell::default_cell_type = {0, "your mom", 5, 5, 2};
-const int CFood::DEF_FOOD_VAL = 5;
+int CFood::DEF_FOOD_VAL = 5;
 
 int main()
 {

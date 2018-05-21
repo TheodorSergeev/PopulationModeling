@@ -1,3 +1,4 @@
+
 #include "winapp.h"
 
 IMPLEMENT_APP(CWinApplication)
@@ -23,6 +24,5 @@ CEnvironment* SetInitialConditions()
 	experiment->PlantObject(food_p2, x, y - 1);
 
     return experiment;
-
+  
 }
-
