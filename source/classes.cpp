@@ -590,3 +590,89 @@ int CEnvironment::Iteration()					//will move to CExperiment later
 }
 
 
+CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
+{
+
+	if(fld_size < 1)
+		throw("BAD_SIZE");
+	
+	FILE *fp = fopen(path.c_str(), "r");
+	if(fp == NULL)
+		throw("CANT_OPEN");
+	int res = 0;
+	
+//	int X = 0, Y = 0;
+//	res = fscanf("(%dx%d)\n", &X, &Y);
+//	if(res != 2)
+//		throw("FMT_ERR");
+
+	CEnvironment *fld = new CEnvironment(fld_size, fld_size);
+
+	for(int j = 0; j < 2; j++)
+	{
+		CCellType *col1 = new CCellType;	
+		char *name = new char[50];
+		
+		int def_hp = 0, speed = 0, rng = 0;
+		res = fscanf(fp, "%s\n", name);
+		if(res != 1)
+			throw("FMT_ERR");
+		col1->type_name = name;
+		
+		res = fscanf(fp, "(%d,%d,%d)\n", &def_hp, &speed, &rng);
+		if(res != 3)
+			throw("FMT_ERR COLONY PARAM");
+		
+		if(def_hp < 1 || speed < 1 || rng < 1)
+			throw("BAD_DATA COLONY PARAM");
+		col1->default_hp = def_hp;
+		col1->speed = speed;
+		col1->view_range = rng;
+		col1->type_id = j;
+
+		CBacterium *inst = new CBacterium(col1);
+
+		int Ncells = 0, x = -1, y = -1;
+		res = fscanf(fp, "%d\n", &Ncells);
+		if(res != 1)
+			throw("FMT_ERR NCELLS");
+		if(Ncells < 1)
+			throw("BAD_DATA NCELLS");
+		for(int i = 0; i < Ncells; i++)
+		{
+			res = fscanf(fp, "%d %d\n", &x, &y);
+			if(res != 2)
+				throw("FMT_ERR COORD");
+			res = fld->PlantObject((CEnvironmentArea *)inst, x, y);
+			if(res == OUT_OF_FIELD)
+				throw("BAD_DATA COORD");
+			
+		}
+	}
+	int NFood = -1, food_val = -1;
+	res = fscanf(fp, "%d%d", &NFood, &food_val);
+	if(res != 2)
+		throw("FMT_ERR FOOD PARAM");
+	if(NFood < 1 || food_val < 1)
+		throw("BAD_DATA FOOD PARAM");
+	CFood *food_inst = new CFood(food_val);
+	for(int i = 0; i < NFood; i++)
+	{
+		int x = -1, y = -1;
+		res = fscanf(fp, "%d %d\n", &x, &y);
+		if(res != 2)
+			throw("FMT_ERR FOOD");
+		res = fld->PlantObject((CEnvironmentArea *)food_inst, x, y);
+		if(res == OUT_OF_FIELD)
+			throw("BAD_DATA FOOD");
+	}
+
+	return fld;
+		
+}
+
+
+
+
+
+

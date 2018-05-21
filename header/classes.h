@@ -123,6 +123,7 @@ public:
 
 
 	int Iteration();						// will move to CExperiment later
+	static CEnvironment *StartCondFromFile(string, int);
 };
 
 //-------------------------------------------------------------------------------------------------
