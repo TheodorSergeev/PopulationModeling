@@ -41,6 +41,8 @@
 		<Unit filename="header/classes.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="source/classes.cpp" />
+		<Unit filename="winapp.cpp" />
+		<Unit filename="winapp.h" />
 		<Extensions>
 			<envvars />
 			<code_completion />

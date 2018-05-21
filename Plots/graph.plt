@@ -27,11 +27,13 @@ set termoption enhanced
 #fit f1(x) "data1.txt" using 1:4 via k1, z1
 #set label sprintf("d{/=25 {/Symbol \163}}/dT = %.3f [{/=15 Н/(м{/Symbol \327}C^{\260}){/Symbol \327}10^{/=12 -5}}]", k1 * 100) at 41, 20 textcolor ls 1
 
-set yrange [0:8] 
+set yrange [0:] 
 #set xrange [10:70]
 
 
-plot "statistics_log.txt" using 1:5 			  notitle 		   ls 31,\
-	 "statistics_log.txt" using 1:3  			  notitle    	   ls 11,\
-	 "statistics_log.txt" using 1:5 smooth bezier title "Бактерии" ls 30,\
-	 "statistics_log.txt" using 1:3 smooth bezier title "Пища" 	   ls 10
+plot "statistics_log.txt" using 1:6 			  notitle 		     ls 21,\
+ 	 "statistics_log.txt" using 1:7 			  notitle 			 ls 31,\
+	 "statistics_log.txt" using 1:3  			  notitle    	     ls 11,\
+	 "statistics_log.txt" using 1:6 smooth bezier title "Бактерии 1" ls 20,\
+ 	 "statistics_log.txt" using 1:7 smooth bezier title "Бактерии 2" ls 30,\
+	 "statistics_log.txt" using 1:3 smooth bezier title "Пища" 	     ls 10

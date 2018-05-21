@@ -130,7 +130,7 @@ void CCell::Dump(FILE* output)				// dumps cell into file & checks some errors;
 	fputs("\n};", output);
 }
 
-// 3 following functions return cell's parameters 
+// 3 following functions return cell's parameters
 
 int CCell::type_id()
 {
@@ -153,7 +153,7 @@ int CCell::Complexity()				// value needed to determine if cell can duplicate.
 	return (cell_type->speed + cell_type->default_hp + cell_type->view_range)/Complexity_Fraction;
 }
 
-void CCell::SetCooldown()			// sets cooldown to maximum. Cooldown decrements each iteration. 
+void CCell::SetCooldown()			// sets cooldown to maximum. Cooldown decrements each iteration.
 						// Cell moves only when cooldown = 0
 {
 	cooldown = cell_type->speed;
@@ -258,7 +258,7 @@ coord_t CEnvironment::GetBounds()			// returns (X, Y) field size
 }
 
 void CEnvironment::DumpASCII(FILE *output)	// dumps field in ASCII pseudo-graphics
-						// I needed this function to test model when window app was not yet 
+						// I needed this function to test model when window app was not yet
 						// written
 {
 
@@ -308,14 +308,14 @@ void CEnvironment::DumpASCII(FILE *output)	// dumps field in ASCII pseudo-graphi
 	#undef HLINE();
 }
 
-int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y) 	// Puts a COPY of your 
+int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y) 	// Puts a COPY of your
 									// object to (x, y) if cell
 									// is free
 									// PLEASE MAKE SURE YOU
 									// FREE obj pointer
-									// AFTER USING 
+									// AFTER USING
 {
-	AREA_TYPE check = this->What(x, y);	
+	AREA_TYPE check = this->What(x, y);
 	if(check == OUT)
 
 		return OUT_OF_FIELD;
@@ -356,7 +356,7 @@ int CEnvironment::DumbSpawnFood()					// food source appears in each free cell w
 }
 
 int CEnvironment::WipeOut()						// frees EACH non-NULL pointer in field
-									// replaces with NULL ptr ( = empty cells) 
+									// replaces with NULL ptr ( = empty cells)
 {
 	int Y = field.size();
 	int X = field[0].size();
@@ -378,7 +378,7 @@ int CEnvironment::WipeOut()						// frees EACH non-NULL pointer in field
 	return deleted;
 }
 
-int CEnvironment::CleanUp()						// frees & replaces with zeroes 
+int CEnvironment::CleanUp()						// frees & replaces with zeroes
 									// ONLY those pointer that point on
 									// objects with zero hp (dead cells, eaten
 									// food/poison sources)
@@ -402,7 +402,7 @@ int CEnvironment::CleanUp()						// frees & replaces with zeroes
 	return deleted;
 }
 
-sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range) 	// Scans area around cell 
+sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range) 	// Scans area around cell
 									// returns array of (dx, dy, TYPE)
 									// dx, dy --- relative coords of objects
 									// TYPE = {FOOD, ALLY, HOSTILE}
@@ -459,9 +459,22 @@ bool CEnvironment::InField(int x, int y)
 	return true;
 }
 
+int CEnvironment::WhatBactType(int x, int y)
+{
+
+    if(this->What(x, y) != BIOCELL)
+        return -1;
+
+    int type = ((CCell*) field[y][x])->type_id();
+
+    return type;
+
+}
+
+
 AREA_TYPE CEnvironment::What(int x, int y)					// returns type of object in (x, y)
 										// returns OUT if x, y out of range,
-										// EMPTY if cell is empty 
+										// EMPTY if cell is empty
 										// (fld[y][x] == NULL)
 										// returns FOOD, POISON, BIOCELL else
 {
@@ -471,18 +484,18 @@ AREA_TYPE CEnvironment::What(int x, int y)					// returns type of object in (x, 
 		return EMPTY;
 	if(field[y][x]->type() == FOOD && ((CFood *)field[y][x])->isPoison())
 		return POISON;
-	return field[y][x]->type();	
+	return field[y][x]->type();
 
 }
 
 int CEnvironment::CellAction(int x, int y)					// processes action of biocell
-										// CCell::Direction returns adjacent 
+										// CCell::Direction returns adjacent
 										// cell's relative coords:
 										// (1, 0), (-1, 0), (0, 1), (0, -1)
 										// if that cell is free and biocell
 										// can move, it moves there
-										// if there is food or other type of 
-										// cell, then it bites that cell 
+										// if there is food or other type of
+										// cell, then it bites that cell
 {
 	if(this->What(x, y) != BIOCELL)
 		return 0;
@@ -525,9 +538,9 @@ int CEnvironment::CellAction(int x, int y)					// processes action of biocell
 	return -100;
 }
 
-coord_t CEnvironment::GetFreeAdj(int x, int y)			// returns (x1, y1) coords of free cell, 
-								// adjacent to (x, y); returns NO_SPACE 
-								// if there is none 
+coord_t CEnvironment::GetFreeAdj(int x, int y)			// returns (x1, y1) coords of free cell,
+								// adjacent to (x, y); returns NO_SPACE
+								// if there is none
 {
 	if(!this->InField(x, y))
 		return INCORRECT;
@@ -544,7 +557,7 @@ coord_t CEnvironment::GetFreeAdj(int x, int y)			// returns (x1, y1) coords of f
 }
 
 coord_t CEnvironment::Divide(int x, int y)			// Checks if biocell at (x, y) can divide
-								// and if there is a free adjacent cell 
+								// and if there is a free adjacent cell
 								// if OK, creates copy, puts it into free cell ,
 								// resets parent cell's hp to default
 								// else returns error values
@@ -557,7 +570,7 @@ coord_t CEnvironment::Divide(int x, int y)			// Checks if biocell at (x, y) can 
 	coord_t pos = this->GetFreeAdj(x, y);
 	if(pos == INCORRECT || pos == NO_SPACE)
 		return pos;
-	this->PlantObject(curr->GetCopy(), pos);	
+	this->PlantObject(curr->GetCopy(), pos);
 
 	curr->ResetHP();
 	return pos;
@@ -565,7 +578,7 @@ coord_t CEnvironment::Divide(int x, int y)			// Checks if biocell at (x, y) can 
 
 int CEnvironment::Iteration()					//will move to CExperiment later
 								//TODO call cells in random order
-								// basic iteration, 
+								// basic iteration,
 {
 	int Y = field.size();
 	int X = field[0].size();
@@ -594,5 +607,91 @@ int CEnvironment::Iteration()					//will move to CExperiment later
 	this->CleanUp();
 	return 0;
 }
+
+
+CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
+{
+
+	if(fld_size < 1)
+		throw("BAD_SIZE");
+
+	FILE *fp = fopen(path.c_str(), "r");
+	if(fp == NULL)
+		throw("CANT_OPEN");
+	int res = 0;
+
+//	int X = 0, Y = 0;
+//	res = fscanf("(%dx%d)\n", &X, &Y);
+//	if(res != 2)
+//		throw("FMT_ERR");
+
+	CEnvironment *fld = new CEnvironment(fld_size, fld_size);
+
+	for(int j = 0; j < 2; j++)
+	{
+		CCellType *col1 = new CCellType;
+		char *name = new char[50];
+
+		int def_hp = 0, speed = 0, rng = 0;
+		res = fscanf(fp, "%s\n", name);
+		if(res != 1)
+			throw("FMT_ERR");
+		col1->type_name = name;
+
+		res = fscanf(fp, "(%d,%d,%d)\n", &def_hp, &speed, &rng);
+		if(res != 3)
+			throw("FMT_ERR COLONY PARAM");
+
+		if(def_hp < 1 || speed < 1 || rng < 1)
+			throw("BAD_DATA COLONY PARAM");
+		col1->default_hp = def_hp;
+		col1->speed = speed;
+		col1->view_range = rng;
+		col1->type_id = j;
+
+		CBacterium *inst = new CBacterium(col1);
+
+		int Ncells = 0, x = -1, y = -1;
+		res = fscanf(fp, "%d\n", &Ncells);
+		if(res != 1)
+			throw("FMT_ERR NCELLS");
+		if(Ncells < 1)
+			throw("BAD_DATA NCELLS");
+		for(int i = 0; i < Ncells; i++)
+		{
+			res = fscanf(fp, "%d %d\n", &x, &y);
+			if(res != 2)
+				throw("FMT_ERR COORD");
+			res = fld->PlantObject((CEnvironmentArea *)inst, x, y);
+			if(res == OUT_OF_FIELD)
+				throw("BAD_DATA COORD");
+
+		}
+	}
+	int NFood = -1, food_val = -1;
+	res = fscanf(fp, "%d%d", &NFood, &food_val);
+	if(res != 2)
+		throw("FMT_ERR FOOD PARAM");
+	if(NFood < 1 || food_val < 1)
+		throw("BAD_DATA FOOD PARAM");
+	CFood *food_inst = new CFood(food_val);
+	for(int i = 0; i < NFood; i++)
+	{
+		int x = -1, y = -1;
+		res = fscanf(fp, "%d %d\n", &x, &y);
+		if(res != 2)
+			throw("FMT_ERR FOOD");
+		res = fld->PlantObject((CEnvironmentArea *)food_inst, x, y);
+		if(res == OUT_OF_FIELD)
+			throw("BAD_DATA FOOD");
+	}
+
+	return fld;
+
+}
+
+
+
+
 
 

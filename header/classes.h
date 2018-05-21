@@ -69,7 +69,7 @@ public:
                                                                 // is negative
 	int ChangeHP(int);                                          // just changes hp by arg
 	int ResetHP();
-	virtual CEnvironmentArea *GetCopy(){};
+	virtual CEnvironmentArea* GetCopy(){ return NULL; };
 
 };
 
@@ -118,6 +118,8 @@ public:
 
 	}
 
+    int WhatBactType(int, int);
+
 	int SpawnFood();						// somehow add food on the field
 									// NOT IMPLEMENTED, USE NEXT ONE
 	int DumbSpawnFood();						// Adds food in free cell with 50% chance
@@ -132,7 +134,7 @@ public:
 	coord_t Divide(int, int);
 
 	int Iteration();						// will move to CExperiment later
-
+	static CEnvironment *StartCondFromFile(string, int);
 };
 
 //-------------------------------------------------------------------------------------------------
@@ -151,7 +153,7 @@ public:
 	bool isFood   (){ if(hp >  0) return true; return false; }
 
 	CEnvironmentArea *GetCopy();
-  
+
 };
 //---------------------------------------------------------------------------------------------------
 
@@ -163,8 +165,8 @@ struct CCellType
 
 	string type_name;
 
-	int default_hp;							// hp value with which new biocell is created
-	int speed;							// bad name actually as the biocell is SLOWER when speed is BIGGER
+	int default_hp;					// hp value with which new biocell is created
+	int speed;						// bad name actually as the biocell is SLOWER when speed is BIGGER
 									// when cell moves its cooldown is set to speed
 									// it is decremented each iteration and biocell moves only when cooldown is 0
 	int view_range;
@@ -191,7 +193,7 @@ public:
 	CCell();
 	virtual	~CCell(){};
 
-  virtual CEnvironmentArea *GetCopy(){};
+    virtual CEnvironmentArea *GetCopy(){ return NULL; };
 
 	int type_id();
 	int view_range();
@@ -212,8 +214,8 @@ public:
 
 //-----------------------------------------------------------------------------------------------------
 
-class CBacterium: public CCell						 
-{  
+class CBacterium: public CCell
+{
 
 public:
 	CBacterium(CCellType *type = &CCell::default_cell_type):CCell(type){};

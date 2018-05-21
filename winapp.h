@@ -61,7 +61,7 @@ const double FIELD_X_SIZE   = std::min(WINDOW_HEIGHT - 2 * BORDER_Y_TOP, WINDOW_
 const double FIELD_Y_SIZE   = FIELD_X_SIZE;
 
 // Experiment iteration speed (in millisecond)
-const int ITER_SPEED_DEF = 500;
+const int ITER_SPEED_DEF   = 1500;
 const int ITER_SPEED_DELTA = 250;
 
 // Buttons symbols
@@ -73,11 +73,13 @@ const wxString BUT_ITER_SYMB_START(wxT("&▶"));
 struct SExperimentStatistics
 {
 
-    int total = CELLS_NUM_X * CELLS_NUM_Y; // total number of cells in the grid
+    int total;                             // total number of cells in the grid
     int food;                              // number of food cells
     int poison;                            // number of poison cells
     int cells;                             // number of bacteries cells
-    std::map <string, int> cell;           // name of a bacterie type / number of them
+    std::vector <int> colonies_size;       // type_id of a bacterie type / number of them
+
+    void Clear();                          // initialize, setting everything to 0
 
 };
 
@@ -110,19 +112,23 @@ private:
     wxTimer timer;  // times the time between iteration
 
     SExperimentStatistics stats; // experiment statistics
-    std::fstream stat_log;       // statistics is written to this file
 
     void GetStatistics();        // collect statistics: count number of bacteries, food, poiseon etc
     void WriteStatistics();      // print collect statistics to a stat_log file
 
     wxString IterFreqStr();      // constructs a string to be printed out as a wxStaticTextBox
 
+    std::fstream stat_log;       // statistics is written to this file
 
  public:
 
     CEnvironment* experiment;
 
     CMainWindow(const wxString& title);
+
+    CEnvironment* SetInitialConditions (); // dialogs for choosing a inintial parameters file
+                                           // setting up positions of bacteries, food, etc;
+    void SetLogFile                    (); // dialogs for choosing a log file, setting up the stream
 
     void OnOpen                ();
     void OnAbout               (wxCommandEvent& WXUNUSED(event));

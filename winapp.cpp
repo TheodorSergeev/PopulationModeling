@@ -14,13 +14,20 @@ CMainWindow::CMainWindow(const wxString& title):wxFrame(NULL, wxID_ANY, title, w
     iter_freq = ITER_SPEED_DEF;
 
     stats.total  = CELLS_NUM_X * CELLS_NUM_Y;
-    stats.food   = 0;
-    stats.poison = 0;
-    stats.cells  = 0;
+
+    int colonies_num = 2; // only 2 colonies by default
+
+    for(int i = 0; i < colonies_num; ++i)
+    {
+
+        stats.colonies_size.push_back(0);
+
+    }
+
+    stats.Clear();
 
     headmenu_bar  = new wxMenuBar; // создали полоску для менюшки
     headmenu_item = new wxMenu;    // создали менюшку
-
 
     // Для всех пунктов меню указывем идентификатор чтобы связать обработчик событие с конкретным элементом
     headmenu_but_about = new wxMenuItem(headmenu_item, wxID_ABOUT, wxT("&About"));    // добавили к менюшке раздел about
@@ -44,13 +51,74 @@ CMainWindow::CMainWindow(const wxString& title):wxFrame(NULL, wxID_ANY, title, w
     but_speed_pause = new wxButton(base_panel, BUTTON_Pause,    BUT_ITER_SYMB_PAUSE, wxPoint(635, 100), wxSize(30, 30), 0); // with the text "hello World"
     but_speed_inc   = new wxButton(base_panel, BUTTON_SpeedInc, BUT_ITER_SYMB_INC,   wxPoint(670, 100), wxSize(30, 30), 0); // with the text "hello World"
 
-    experiment = SetInitialConditions(); // bacteries and food placement
-
     timer.Start(iter_freq);
 
 };
 
-void CMainWindow::OnOpen() // it is not an event - just a function for selecting a user's stat_log file
+CEnvironment* CMainWindow::SetInitialConditions()
+{
+
+
+    CEnvironment* env;
+    string config_fname = "init_params.txt";
+
+    try
+    {
+
+        int answer = wxMessageBox(_("Do you want to use default initial configuration file"), _("Statistics file"),
+                                  wxICON_QUESTION | wxYES_DEFAULT | wxYES_NO , this);
+
+        if(answer == wxNO) // if the user wants to select a new log file
+        {
+
+            // Creates a "open file" dialog with 1 file type
+            wxFileDialog* OpenDialog = new wxFileDialog(this, _("Choose a file to open"), wxEmptyString, _("Plots/statistics_log.txt"),
+                                                        _("Text files (*.txt)|*.txt"), wxFD_OPEN, wxDefaultPosition);
+
+            if(OpenDialog->ShowModal() == wxID_OK) // if the user clicks "Save" instead of "Cancel"
+            {
+
+                config_fname = string(OpenDialog->GetPath().mb_str());  // Sets our current document to the file the user selected
+
+            }
+
+            OpenDialog->Destroy(); // clean up
+
+        }
+
+        env = CEnvironment::StartCondFromFile(config_fname.c_str(), CELLS_NUM_X);
+
+    }
+    catch(const char* err)
+    {
+
+        string msg = "Can't open file with the initial parameters of the environment: ";
+        msg += err;
+        msg += "\n";
+
+        int answer = wxMessageBox(_("Couldn't parse/open the selected initial configuration file. Try opening another one? ('No' = close the program)"),  _("Statistics file"),
+                              wxICON_QUESTION | wxYES_DEFAULT | wxYES_NO , this);
+        if(answer == wxYES)
+        {
+
+            return SetInitialConditions();
+
+        }
+        else if(answer == wxNO)
+        {
+
+            Destroy();
+            return NULL;
+
+        }
+
+    }
+
+    return env; //CELLS_NUM_X = CELLS_NUM_Y
+
+};
+
+void CMainWindow::SetLogFile()
 {
 
     string log_fname = "Plots/statistics_log.txt";
@@ -61,8 +129,8 @@ void CMainWindow::OnOpen() // it is not an event - just a function for selecting
     if(answer == wxNO) // if the user wants to select a new log file
     {
 
-        // Creates a "open file" dialog with 1 file types
-        wxFileDialog* OpenDialog = new wxFileDialog(this, _("Choose a file to open"), wxEmptyString, _("Plots/statistics_log.txt"),
+        // Creates a "open file" dialog with 1 file type
+        wxFileDialog* OpenDialog = new wxFileDialog(this, _("Choose a file to save statistics to"), wxEmptyString, _("Plots/statistics_log.txt"),
                                                     _("Text files (*.txt)|*.txt"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT, wxDefaultPosition);
 
         if(OpenDialog->ShowModal() == wxID_OK) // if the user clicks "Save" instead of "Cancel"
@@ -81,10 +149,31 @@ void CMainWindow::OnOpen() // it is not an event - just a function for selecting
     if(!stat_log.is_open())
     {
 
-        wxMessageDialog *error = new wxMessageDialog(NULL, wxT("Couldn't open statistics log file"), wxT("Info"), wxOK);
-        error->ShowModal();
+        answer = wxMessageBox(_("Couldn't open statistics log file. Try opening another one?"),  _("Statistics file"),
+                              wxICON_QUESTION | wxYES_DEFAULT | wxYES_NO , this);
+        if(answer == wxYES)
+        {
+
+            SetLogFile();
+
+        }
+        else if(answer == wxNO)
+        {
+
+            wxMessageDialog *error = new wxMessageDialog(NULL, wxT("No statistics will be saved"), wxT("Info"), wxOK);
+            error->ShowModal();
+
+        }
 
     }
+
+};
+
+void CMainWindow::OnOpen() // it is not an event - just a function for selecting a user's stat_log file
+{
+
+    SetLogFile();
+    experiment = SetInitialConditions(); // bacteries and food placement
 
 };
 
@@ -164,19 +253,33 @@ void CMainWindow::OnButtonClick_Pause(wxCommandEvent& event)
 void CMainWindow::OnTimer(wxTimerEvent& event)
 {
 
-    experiment->Iteration();
-    this->Refresh();
     GetStatistics();
     WriteStatistics();
+    experiment->Iteration();
+    this->Refresh();
     iter_done++;
+
+};
+
+void SExperimentStatistics::Clear()
+{
+
+    //total = CELLS_NUM_X * CELLS_NUM_Y;
+    this->food   = 0;
+    this->poison = 0;
+    this->cells  = 0;
+
+    int colonies_num = this->colonies_size.size();
+
+    for(int i = 0; i < colonies_num; ++i)
+        this->colonies_size[i] = 0;
 
 };
 
 void CMainWindow::GetStatistics()
 {
 
-    stats.food  = 0;
-    stats.cells = 0;
+    stats.Clear();
 
     for(int i = 0; i < CELLS_NUM_X; ++i)
     {
@@ -185,16 +288,28 @@ void CMainWindow::GetStatistics()
         {
 
             AREA_TYPE type = experiment->What(i, j);
+            int type_id = experiment->WhatBactType(i, j); // != -1, if BIOCELL
 
             switch(type)
 			{
+
 				case FOOD:
-					//if(((CFood *)(field[i][j]))->isPoison()) poison++; else
+				{
+				    //if(((CFood *)(field[i][j]))->isPoison()) poison++; else
 					stats.food++;
 					break;
+
+				}
 				case BIOCELL:
-					stats.cells++;
+				{
+
+				    stats.cells++;
+
+                    if(type_id >= 0 && (unsigned) type_id < stats.colonies_size.size())
+                        stats.colonies_size[type_id]++;
 					break;
+
+				}
 				default:
 					break;
 
@@ -218,7 +333,18 @@ void CMainWindow::WriteStatistics()
              << stats.total  << " "
              << stats.food   << " "
              << stats.poison << " "
-             << stats.cells  << "\n";
+             << stats.cells  << " ";
+
+    int colonies_num = stats.colonies_size.size();
+
+    for(int i = 0; i < colonies_num; ++i)
+    {
+
+        stat_log << stats.colonies_size[i] << " ";
+
+    }
+
+    stat_log << "\n";
 
 };
 
@@ -309,9 +435,17 @@ void CFieldDrawPane::OnPaint(wxPaintEvent& event)
         for(int j = 0; j < CELLS_NUM_Y; ++j)
         {
 
-            AREA_TYPE env_area_type = mn->experiment->What(j, i);
+            AREA_TYPE env_area_type = mn->experiment->What(i, j);
+            int biocell_type = mn->experiment->WhatBactType(i, j);
 
-            DrawCell(i, j, env_area_type % NUM_COLOURS, dc);
+            //if(env_area_type != EMPTY) mn->stat_log << "x = " << j << "; y  = " << i <<  "; area = " << env_area_type << "; bio_id = " << biocell_type << "\n";
+
+            if(env_area_type == FOOD)
+                DrawCell(i, j, 1, dc);
+            else if(env_area_type == BIOCELL)
+                DrawCell(i, j, 2 + biocell_type, dc);
+            else
+                DrawCell(i, j, 0, dc); // EMPTY_CELL
 
         }
 
@@ -350,3 +484,4 @@ int  CWinApplication::OnExit()
     return 0;
 
 };
+
