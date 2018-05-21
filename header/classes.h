@@ -20,72 +20,76 @@ using std::string;
 
 enum AREA_TYPE
 {
-	EMPTY, 
-	FOOD = 'F', 
-	POISON = 'P',
-	BIOCELL = 'B', 
+	EMPTY,
+	FOOD,
+	POISON,
+	BIOCELL,
 	WALL,
-	ALLY = 'A',
-	HOSTILE = 'H',
-	OUT
+	ALLY,
+	HOSTILE,
+	OUT         // type for returning errors if (x,y) is out of range
+
 };
-typedef pair <int, int> coord_t;
-extern const coord_t INCORRECT;
+
+typedef pair <int, int> coord_t;    // for passing (x,y) coordinates
+extern const coord_t INCORRECT;     // for passing errors
 
 enum ERRORS
 {
+
 	OUT_OF_FIELD = -100,
 	OCCUPIED,
 	NEGATIVE,
 	BAD_RANGE
-};
 
-//-------------------------------------------------------------------------------------------------
-//
-//-----Application-----
-//
-//-------------------------------------------------------------------------------------------------
+};
 
 
 // A cell of the 2d Environment array. Either empty/cell/food/poison/...
 class CEnvironmentArea
 {
+
 private:
 	AREA_TYPE area_type;
+
 protected:
 	int hp; // food - hp_value > 0; posion - hp_value < 0
+
 public:
 	CEnvironmentArea(AREA_TYPE);
 	virtual	~CEnvironmentArea(){};
 
-	bool isDead(){ if(hp == 0) return true; return false; }
-
+	bool isDead   (){ if(hp == 0) return true; return false; }  // checks if hp == 0
 	AREA_TYPE type(){ return area_type; }
+	int HpValue   (){ return hp; }                              // returns hp value
 
-	int HpValue(){ return hp; }
-	int Bite(int);
-	int ChangeHP(int);
+	int Bite(int);                                              // function for modelling cells eating food and each other
+                                                                // decrements hp by argument to a minimum of current hp;
+                                                                // returns decremented value; in case of poison returned value
+                                                                // is negative
+	int ChangeHP(int);                                          // just changes hp by arg
 	int ResetHP();
 	virtual CEnvironmentArea *GetCopy(){};
 
 };
-//-------------------------------------------------------------------------------------------------
+
 typedef vector <vector<CEnvironmentArea*> >  envmap_t;
 struct CView
 {
+
 	int x;
 	int y;
 	AREA_TYPE type;
+
 };
 
-typedef vector<CView> sur_t;
-//-------------------------------------------------------------------------------------------------
+typedef vector <CView> sur_t;
+
 
 class CEnvironment
 {
 
 private:
-
 	envmap_t field;
 
 public:
@@ -94,20 +98,26 @@ public:
 
 	coord_t GetBounds();
 	void DumpASCII(FILE *);
-	void Print() {this->DumpASCII(stdout);}
+	void Print() { this->DumpASCII(stdout); }
 
 	bool InField(int, int);
-	bool InField(coord_t p) 
+
+	bool InField(coord_t p)
 	{
+
 		return this->InField(std::get<0>(p), std::get<1>(p));
-	};
-	
+
+	}
+
 	AREA_TYPE What(int, int);
+
 	AREA_TYPE What(coord_t p)
 	{
+
 		return this->What(std::get<0>(p), std::get<1>(p));
-	};
-	
+
+	}
+
 	int SpawnFood();						// somehow add food on the field
 									// NOT IMPLEMENTED, USE NEXT ONE
 	int DumbSpawnFood();						// Adds food in free cell with 50% chance
@@ -120,7 +130,6 @@ public:
 
 	coord_t GetFreeAdj(int, int);
 	coord_t Divide(int, int);
-
 
 	int Iteration();						// will move to CExperiment later
 	static CEnvironment *StartCondFromFile(string, int);
@@ -135,7 +144,6 @@ private:
 	static const int DEF_FOOD_VAL;
 
 public:
-
 	CFood(int);
 	virtual	~CFood(){};
 
@@ -143,12 +151,14 @@ public:
 	bool isFood   (){ if(hp >  0) return true; return false; }
 
 	CEnvironmentArea *GetCopy();
+  
 };
 //---------------------------------------------------------------------------------------------------
 
 // Cell "species" type; values that are common for all instances
 struct CCellType
 {
+
 	int type_id;
 
 	string type_name;
@@ -158,6 +168,7 @@ struct CCellType
 									// when cell moves its cooldown is set to speed
 									// it is decremented each iteration and biocell moves only when cooldown is 0
 	int view_range;
+
 };
 
 // Basic thin class-parent for cell types of the colonies
@@ -179,7 +190,8 @@ public:
 	CCell(CCellType *);
 	CCell();
 	virtual	~CCell(){};
-	virtual CEnvironmentArea *GetCopy(){};
+
+  virtual CEnvironmentArea *GetCopy(){};
 
 	int type_id();
 	int view_range();
@@ -189,24 +201,28 @@ public:
 	void DecCooldown();
 	bool CanMove();
 	bool CanDivide();
-			
+
 	void Dump(FILE* );
 	void Print() { this->Dump(stdout); }
-	virtual coord_t Direction(sur_t *) = 0; 
+	virtual coord_t Direction(sur_t *) = 0;
 
 
 };
+
+
 //-----------------------------------------------------------------------------------------------------
 
 class CBacterium: public CCell						 
 {  
+
 public:
 	CBacterium(CCellType *type = &CCell::default_cell_type):CCell(type){};
 	virtual	~CBacterium(){};
-	
+
 	coord_t Direction(sur_t *);
 	CEnvironmentArea *GetCopy();
 };
+
 //
 // VITALY'S NOTE: Following code was written by Fedor, I didn't use it but I'll leave it as having great historical and cultural value
 //
@@ -244,56 +260,4 @@ public:
 };
 
 
-//-------------------------------------------------------------------------------------------------
-//
-//-----Application-----
-//
-//-------------------------------------------------------------------------------------------------
-
-
-// Deals with window refreshment, button interaction and painting
-class CApp
-{
-
-	float speed;     		// turns per second
-
-
-	void RunExperiment(float speed, int time_limit)
-	{
-
-		for(int t = 0;  t <= time_limit; ++t)
-		{
-
-			// iteration
-			// field visualisation
-			// data collection
-			// data visualisaton
-			// pause check
-			// save check
-
-		}
-
-	}
-
-};
-
-/*
-field = Environment.GetSurroundings(); // 3x3
-
-if(field[0][1].type == FOOD)
-{
-
-	hp += field[0][1].HpValue();
-
-	fiels[0][1] = this;
-	field[0][0] = NULL;
-
-}*/
-
-
-//To do:
-// 1) Deal with synchronisation issues - which cell does it's action first in conflict situation, for example if two cells are to consume same food at the same type
-// 2) Deal with speed issues
-// 3) Movement
-// 4)
 
