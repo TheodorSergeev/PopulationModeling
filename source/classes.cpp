@@ -1,13 +1,16 @@
-#include "../header/classes.h"
+// Author: Vitaly Axenov
+// 2018 --- \infty
+#include"../header/classes.h"
 
 #include <time.h>
 #include <stdio.h>
 #include <cmath>
 
-#define Complexity_Fraction 3
-#define KUS_SIZE 6
+#define Complexity_Fraction 3 	// needed in CCell::Complexity function which determines if the cell can duplicate
+#define KUS_SIZE 6		// default size of bite of each cell (hp cell can take from food/other cell per turn)
 const size_t TIMESTAMP_LEN = 50;
-const coord_t INCORRECT = coord_t(-1, -1);
+const int DEF_FOOD_VAL = 12;
+const coord_t INCORRECT = coord_t(-1, -1);	// reserved-values for errors in functions that return coord_t
 const coord_t NO_SPACE = coord_t(-2, -2);
 
 CCellType CCell::default_cell_type = {0, "your mom", 5, 5, 2};
@@ -18,7 +21,7 @@ const int CFood::DEF_FOOD_VAL = 5;
 
 void PrintTimestamp(FILE *output)
 {
-	struct timespec t;                                      //making timestamp
+	struct timespec t;                                      // making timestamp
 	clock_gettime(CLOCK_REALTIME, &t);
 	struct tm *tmp = localtime(&(t.tv_sec));
 	char timestamp[TIMESTAMP_LEN];
@@ -29,12 +32,15 @@ void PrintTimestamp(FILE *output)
 //-----------------------------------------------------------------------------------------------
 //-------------CEnvironmentArea------------------------------------------------------------------
 
-CEnvironmentArea::CEnvironmentArea(AREA_TYPE type)
+CEnvironmentArea::CEnvironmentArea(AREA_TYPE type)	// constructor
 {
 	area_type = type;
 }
 
-int CEnvironmentArea::Bite(int dmg)
+int CEnvironmentArea::Bite(int dmg)			// determines how much hp can be taken from food/cell
+							// decrements hp by dmg, to a minimum of zero
+							// returns difference which is max(dmg, current_hp)
+							// in case of poison negative val is returned
 {
 	if(dmg <= 0)
 		return 0;
@@ -53,26 +59,30 @@ int CEnvironmentArea::Bite(int dmg)
 
 }
 
-int CEnvironmentArea::ChangeHP(int delta)
+int CEnvironmentArea::ChangeHP(int delta)		// changes hp by delta to a minimum of zero
 {
-	hp = (hp + delta > 0) ? hp + delta : 0;
+	if(hp >= 0)
+		hp = (hp + delta > 0) ? hp + delta : 0;
+	else
+		hp = (hp + delta < 0) ? hp + delta : 0;
 	return hp;
 }
 
 
-int CEnvironmentArea::ResetHP()
+int CEnvironmentArea::ResetHP()				// resets hp to cell's default hp in case of BIOCELL
+							// ---//---  to zero in case of food
 {
 	if(area_type == BIOCELL)
 		hp = ((CCell *) this)->default_hp();
 	if(area_type == FOOD)
-		hp = 0;
+		hp = DEF_FOOD_VAL;
 	return hp;
 }
 
 //------------------------------------------------------------------------------------------------
 //-------------CCell------------------------------------------------------------------------------
 
-CCell::CCell(CCellType *type):CEnvironmentArea(BIOCELL)
+CCell::CCell(CCellType *type):CEnvironmentArea(BIOCELL)	// constructor
 {
 
 	cell_type = type;
@@ -80,14 +90,15 @@ CCell::CCell(CCellType *type):CEnvironmentArea(BIOCELL)
 	cooldown = 0;
 }
 
-CCell::CCell():CEnvironmentArea(BIOCELL)
+CCell::CCell():CEnvironmentArea(BIOCELL)		// default cell constructor
 {
 	cell_type = &CCell::default_cell_type;
 	hp = cell_type->default_hp;
 	cooldown = 0;
 }
 
-void CCell::Dump(FILE* output)
+void CCell::Dump(FILE* output)				// dumps cell into file & checks some errors;
+							//  needed for testing
 {
 	PrintTimestamp(output);
 	fprintf(output,	"CCell[%08X]:\n"
@@ -119,6 +130,8 @@ void CCell::Dump(FILE* output)
 	fputs("\n};", output);
 }
 
+// 3 following functions return cell's parameters 
+
 int CCell::type_id()
 {
 	return this->cell_type->type_id;
@@ -134,17 +147,19 @@ int CCell::default_hp()
 	return cell_type->default_hp;
 }
 
-int CCell::Complexity()
+int CCell::Complexity()				// value needed to determine if cell can duplicate.
+						// Cell duplicates if hp > 2*default_hp + complexity
 {
 	return (cell_type->speed + cell_type->default_hp + cell_type->view_range)/Complexity_Fraction;
 }
 
-void CCell::SetCooldown()
+void CCell::SetCooldown()			// sets cooldown to maximum. Cooldown decrements each iteration. 
+						// Cell moves only when cooldown = 0
 {
 	cooldown = cell_type->speed;
 }
 
-void CCell::DecCooldown()
+void CCell::DecCooldown()			// decrements cooldown to a minimum of zero
 {
 	cooldown = (cooldown - 1 > 0) ? cooldown - 1 : 0;
 }
@@ -193,19 +208,23 @@ coord_t CBacterium::Direction(sur_t *s) // Minimal example; only move where ther
 	}
 }
 
-CCell *CBacterium::GetCopy()
+CEnvironmentArea *CBacterium::GetCopy()
 {
 	CBacterium *copy = new CBacterium(this->cell_type);
-	return (CCell *)copy;
+	return (CEnvironmentArea *)copy;
 }
 //--------------------------------------------------------------------------------------------
 //-------------CFood--------------------------------------------------------------------------
 
-const int DEF_FOOD_VAL = 12;
 
 CFood::CFood(int hp_val = DEF_FOOD_VAL):CEnvironmentArea(FOOD)
 {
 	hp = hp_val;
+}
+
+CEnvironmentArea *CFood::GetCopy()
+{
+	return (CEnvironmentArea *)(new CFood(hp));
 }
 
 //------------------------------------------------------------------------------------------------
@@ -227,10 +246,10 @@ CEnvironment::CEnvironment(int x = DEF_XSZ, int y = DEF_YSZ)
 }
 CEnvironment::~CEnvironment()
 {
-	this->WipeOut();
+	this->WipeOut();				// frees all non-NULL pointers stored in field
 }
 
-coord_t CEnvironment::GetBounds()
+coord_t CEnvironment::GetBounds()			// returns (X, Y) field size
 {
 	int Y = field.size();
 	int X = field[0].size();
@@ -238,7 +257,9 @@ coord_t CEnvironment::GetBounds()
 	return res;
 }
 
-void CEnvironment::DumpASCII(FILE *output)
+void CEnvironment::DumpASCII(FILE *output)	// dumps field in ASCII pseudo-graphics
+						// I needed this function to test model when window app was not yet 
+						// written
 {
 
 	int Y = field.size();
@@ -263,8 +284,10 @@ void CEnvironment::DumpASCII(FILE *output)
 			switch(t)
 			{
 				case FOOD:
-					if(((CFood *)(field[i][j]))->isPoison()) c = 'P';
-					else c = 'F';
+					c = 'F';
+					break;
+				case POISON:
+					c = 'P';
 					break;
 				case BIOCELL:
 					c = (((CCell *)field[i][j])->type_id())%10 + '0';
@@ -285,13 +308,20 @@ void CEnvironment::DumpASCII(FILE *output)
 	#undef HLINE();
 }
 
-int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y)
+int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y) 	// Puts a COPY of your 
+									// object to (x, y) if cell
+									// is free
+									// PLEASE MAKE SURE YOU
+									// FREE obj pointer
+									// AFTER USING 
 {
-	if((y >= (int) field.size()) || (x >= (int) field[0].size()))
+	AREA_TYPE check = this->What(x, y);	
+	if(check == OUT)
+
 		return OUT_OF_FIELD;
-	if(field[y][x] != NULL)
+	if(check != EMPTY)
 		return OCCUPIED;
-	field[y][x] = obj;
+	field[y][x] = obj->GetCopy();
 	return 0;
 }
 
@@ -300,7 +330,8 @@ int CEnvironment::PlantObject(CEnvironmentArea *obj, coord_t coord)
 	return this->PlantObject(obj, std::get<0>(coord), std::get<1>(coord));
 }
 
-int CEnvironment::DumbSpawnFood()
+int CEnvironment::DumbSpawnFood()					// food source appears in each free cell with
+									// 50% chance
 {
 	srand(time(NULL));
 	int Y = field.size();
@@ -324,7 +355,8 @@ int CEnvironment::DumbSpawnFood()
 	return planted;
 }
 
-int CEnvironment::WipeOut()
+int CEnvironment::WipeOut()						// frees EACH non-NULL pointer in field
+									// replaces with NULL ptr ( = empty cells) 
 {
 	int Y = field.size();
 	int X = field[0].size();
@@ -346,7 +378,10 @@ int CEnvironment::WipeOut()
 	return deleted;
 }
 
-int CEnvironment::CleanUp()
+int CEnvironment::CleanUp()						// frees & replaces with zeroes 
+									// ONLY those pointer that point on
+									// objects with zero hp (dead cells, eaten
+									// food/poison sources)
 {
 	int Y = field.size();
 	int X = field[0].size();
@@ -367,7 +402,13 @@ int CEnvironment::CleanUp()
 	return deleted;
 }
 
-sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range)
+sur_t *CEnvironment::GetSurroundings(int x0, int y0, int range) 	// Scans area around cell 
+									// returns array of (dx, dy, TYPE)
+									// dx, dy --- relative coords of objects
+									// TYPE = {FOOD, ALLY, HOSTILE}
+									// objects are in view range rng
+									// meaning that |dx| + |dy| <= rng
+									// (so-called 'manhattan' distance)
 {
 	if(range <= 0)
 		return NULL;
@@ -418,16 +459,30 @@ bool CEnvironment::InField(int x, int y)
 	return true;
 }
 
-AREA_TYPE CEnvironment::What(int x, int y)
+AREA_TYPE CEnvironment::What(int x, int y)					// returns type of object in (x, y)
+										// returns OUT if x, y out of range,
+										// EMPTY if cell is empty 
+										// (fld[y][x] == NULL)
+										// returns FOOD, POISON, BIOCELL else
 {
 	if(!this->InField(x, y))
 		return OUT;
 	if(field[y][x] == NULL)
 		return EMPTY;
-	return field[y][x]->type();
+	if(field[y][x]->type() == FOOD && ((CFood *)field[y][x])->isPoison())
+		return POISON;
+	return field[y][x]->type();	
+
 }
 
-int CEnvironment::CellAction(int x, int y)
+int CEnvironment::CellAction(int x, int y)					// processes action of biocell
+										// CCell::Direction returns adjacent 
+										// cell's relative coords:
+										// (1, 0), (-1, 0), (0, 1), (0, -1)
+										// if that cell is free and biocell
+										// can move, it moves there
+										// if there is food or other type of 
+										// cell, then it bites that cell 
 {
 	if(this->What(x, y) != BIOCELL)
 		return 0;
@@ -470,7 +525,9 @@ int CEnvironment::CellAction(int x, int y)
 	return -100;
 }
 
-coord_t CEnvironment::GetFreeAdj(int x, int y)
+coord_t CEnvironment::GetFreeAdj(int x, int y)			// returns (x1, y1) coords of free cell, 
+								// adjacent to (x, y); returns NO_SPACE 
+								// if there is none 
 {
 	if(!this->InField(x, y))
 		return INCORRECT;
@@ -486,7 +543,11 @@ coord_t CEnvironment::GetFreeAdj(int x, int y)
 	return NO_SPACE;
 }
 
-coord_t CEnvironment::Divide(int x, int y)
+coord_t CEnvironment::Divide(int x, int y)			// Checks if biocell at (x, y) can divide
+								// and if there is a free adjacent cell 
+								// if OK, creates copy, puts it into free cell ,
+								// resets parent cell's hp to default
+								// else returns error values
 {
 	if(this->What(x, y) != BIOCELL)
 		return INCORRECT;
@@ -496,14 +557,15 @@ coord_t CEnvironment::Divide(int x, int y)
 	coord_t pos = this->GetFreeAdj(x, y);
 	if(pos == INCORRECT || pos == NO_SPACE)
 		return pos;
-	CCell *child = curr->GetCopy();
-	this->PlantObject((CEnvironmentArea *) child, pos);
+	this->PlantObject(curr->GetCopy(), pos);	
+
 	curr->ResetHP();
 	return pos;
 }
 
 int CEnvironment::Iteration()					//will move to CExperiment later
 								//TODO call cells in random order
+								// basic iteration, 
 {
 	int Y = field.size();
 	int X = field[0].size();
