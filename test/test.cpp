@@ -15,8 +15,8 @@ int main()
 	test_type.speed = 3;
 	test_type.view_range = 3;
 
-	
-	CCell *mom = new CBacterium();
+	CBacterium mamanya();	
+	CCell *mom = (CCell *)&mamanya;//new CBacterium();
 	CCell *eva = new CBacterium(&test_type);
 
 	FILE *fp = fopen("dumps.txt", "a");
@@ -40,7 +40,8 @@ int main()
 //	fld.PlantObject(poison_p, 1, 0);
 //	fld.DumbSpawnFood();
 	int hp = 1;
-	while(hp > 0)
+//	while(hp > 0)
+	for(int i = 0; i < 10; i++)
 	{
 		fld.Iteration();
 		fld.Print();

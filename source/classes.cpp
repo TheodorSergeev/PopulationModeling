@@ -206,10 +206,10 @@ coord_t CBacterium::Direction(sur_t *s) // Minimal example; only move where ther
 	}
 }
 
-CCell *CBacterium::GetCopy()
+CEnvironmentArea *CBacterium::GetCopy()
 {
 	CBacterium *copy = new CBacterium(this->cell_type);
-	return (CCell *)copy;
+	return (CEnvironmentArea *)copy;
 }
 //--------------------------------------------------------------------------------------------
 //-------------CFood--------------------------------------------------------------------------
@@ -218,6 +218,11 @@ CCell *CBacterium::GetCopy()
 CFood::CFood(int hp_val = DEF_FOOD_VAL):CEnvironmentArea(FOOD)
 {
 	hp = hp_val;
+}
+
+CEnvironmentArea *CFood::GetCopy()
+{
+	return (CEnvironmentArea *)(new CFood(hp));
 }
 
 //------------------------------------------------------------------------------------------------
@@ -301,13 +306,19 @@ void CEnvironment::DumpASCII(FILE *output)	// dumps field in ASCII pseudo-graphi
 	#undef HLINE();
 }
 
-int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y) 	// Will be re-written	
+int CEnvironment::PlantObject(CEnvironmentArea *obj, int x, int y) 	// Puts a COPY of your 
+									// object to (x, y) if cell
+									// is free
+									// PLEASE MAKE SURE YOU
+									// FREE obj pointer
+									// AFTER USING 
 {
-	if((y >= field.size()) || (x >= field[0].size()))
+	AREA_TYPE check = this->What(x, y);	
+	if(check == OUT)
 		return OUT_OF_FIELD;
-	if(field[y][x] != NULL)
+	if(check != EMPTY)
 		return OCCUPIED;
-	field[y][x] = obj;
+	field[y][x] = obj->GetCopy();
 	return 0;
 }
 
@@ -541,8 +552,7 @@ coord_t CEnvironment::Divide(int x, int y)			// Checks if biocell at (x, y) can 
 	coord_t pos = this->GetFreeAdj(x, y);
 	if(pos == INCORRECT || pos == NO_SPACE)
 		return pos;
-	CCell *child = curr->GetCopy(); 
-	this->PlantObject((CEnvironmentArea *) child, pos);	
+	this->PlantObject(curr->GetCopy(), pos);	
 	curr->ResetHP();
 	return pos;
 }

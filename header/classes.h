@@ -66,6 +66,7 @@ public:
 	int Bite(int);
 	int ChangeHP(int);
 	int ResetHP();
+	virtual CEnvironmentArea *GetCopy(){};
 
 };
 //-------------------------------------------------------------------------------------------------
@@ -139,6 +140,8 @@ public:
 
 	bool isPoison (){ if(hp <  0) return true; return false; }
 	bool isFood   (){ if(hp >  0) return true; return false; }
+
+	CEnvironmentArea *GetCopy();
 };
 //---------------------------------------------------------------------------------------------------
 
@@ -175,7 +178,7 @@ public:
 	CCell(CCellType *);
 	CCell();
 	virtual	~CCell(){};
-	virtual CCell *GetCopy(){};
+	virtual CEnvironmentArea *GetCopy(){};
 
 	int type_id();
 	int view_range();
@@ -201,7 +204,7 @@ public:
 	virtual	~CBacterium(){};
 	
 	coord_t Direction(sur_t *);
-	CCell *GetCopy();
+	CEnvironmentArea *GetCopy();
 };
 //
 // VITALY'S NOTE: Following code was written by Fedor, I didn't use it but I'll leave it as having great historical and cultural value
