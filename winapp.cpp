@@ -217,7 +217,7 @@ void CMainWindow::OnButtonClick_SpeedDec(wxCommandEvent& event)
 void CMainWindow::OnButtonClick_SpeedInc(wxCommandEvent& event)
 {
 
-    if(iter_freq - ITER_SPEED_DELTA >= 0)
+    if(iter_freq - ITER_SPEED_DELTA > 0)
         iter_freq -= ITER_SPEED_DELTA;
 
     text_speed->SetLabel(IterFreqStr());
