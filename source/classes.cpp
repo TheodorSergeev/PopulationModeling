@@ -4,9 +4,12 @@
 
 #include <time.h>
 #include <stdio.h>
+#include<strings.h>
+#include<string.h>
 #include <cmath>
 
-#define Complexity_Fraction 3 	// needed in CCell::Complexity function which determines if the cell can duplicate
+#define Complexity_Fraction 5 	// needed in CCell::Complexity function which determines if the cell can duplicate
+#define Speed_Factor 5
 #define KUS_SIZE 6		// default size of bite of each cell (hp cell can take from food/other cell per turn)
 const size_t TIMESTAMP_LEN = 50;
 const int DEF_FOOD_VAL = 12;
@@ -150,7 +153,7 @@ int CCell::default_hp()
 int CCell::Complexity()				// value needed to determine if cell can duplicate.
 						// Cell duplicates if hp > 2*default_hp + complexity
 {
-	return (cell_type->speed + cell_type->default_hp + cell_type->view_range)/Complexity_Fraction;
+	return (Speed_Factor/cell_type->speed + cell_type->default_hp + cell_type->view_range)/Complexity_Fraction;
 }
 
 void CCell::SetCooldown()			// sets cooldown to maximum. Cooldown decrements each iteration.
@@ -172,7 +175,7 @@ bool CCell::CanMove()
 
 bool CCell::CanDivide()
 {
-	return (this->Complexity() + 2*cell_type->default_hp < hp);
+	return (this->Complexity() + 2*cell_type->default_hp <= hp);
 }
 
 
@@ -185,12 +188,19 @@ coord_t CBacterium::Direction(sur_t *s) // Minimal example; only move where ther
 	float ix = 0, iy = 0;
 	float x = 0, y = 0;
 	int num = s->size();
+	
 	for(int i = 0; i < num; i++)
 	{
+		
 		if((*s)[i].type == FOOD)
 		{
-			ix = (float)((*s)[i].x);
-			iy = (float)((*s)[i].y);
+			int dx = (*s)[i].x;
+			int dy = (*s)[i].y;
+			if((abs(dx) + abs(dy)) == 1)
+				return coord_t(dx, dy);
+			
+			ix = (float)dx;
+			iy = (float)dy;
 			float dist = ix + iy; 			//'manhattan' distance
 			x += ix/dist/dist;
 			y += iy/dist/dist;
@@ -243,6 +253,9 @@ CEnvironment::CEnvironment(int x = DEF_XSZ, int y = DEF_YSZ)
 	row.shrink_to_fit();
 	field = envmap_t(y, row);
 	field.shrink_to_fit();
+	
+	//bzero(&fd, sizeof(FoodInfo));
+	fd.N = 0;
 }
 CEnvironment::~CEnvironment()
 {
@@ -353,6 +366,39 @@ int CEnvironment::DumbSpawnFood()					// food source appears in each free cell w
 		}
 	}
 	return planted;
+}
+
+#define TRIES 3								// limit of tries per cell (try to plant food again
+									// if randomly generated cell is occupied
+
+int CEnvironment::RandSpawnFood(int N, int hp)				// food source with hpval HP appear in
+									// N random free cells
+{
+	int Y = field.size();
+	int X = field[0].size();
+	int spawned = 0;
+	CFood portion(hp);
+	for(int i = 0; (i < TRIES*N)&&(spawned < N); i++) 		
+	{
+		int x = rand()%X, y = rand()%Y;
+		if(this->What(x, y) != EMPTY)
+			continue;
+		this->PlantObject((CEnvironmentArea *)&portion, x, y);
+		spawned++;	
+	}
+	return spawned;
+}
+
+int CEnvironment::SetFoodInfo(int N, int hp, int period)
+{
+	if(N < 0 || period < 0)
+		return -1;
+	fd.N = N;
+	fd.hp = hp;
+	fd.period = period;
+	fd.timer = 0;
+	return 0;
+
 }
 
 int CEnvironment::WipeOut()						// frees EACH non-NULL pointer in field
@@ -513,9 +559,17 @@ int CEnvironment::CellAction(int x, int y)					// processes action of biocell
 
 	if(tp == OUT)
 	{
-		return -1;					//TODO: this part)
+		coord_t free = this->GetFreeAdj(x, y);
+		if(free != NO_SPACE)
+		{
+			x1 = x + std::get<0>(free);
+			y1 = y + std::get<1>(free);
+			tp = EMPTY;
+		}
+		else
+			return -1;						//TODO: this part)
 	}
-	if(curr->CanMove() && tp == EMPTY)		// cell moves
+	if(curr->CanMove() && tp == EMPTY)					// cell moves
 	{
 		field[y1][x1] = field[y][x];
 		field[y][x] = NULL;
@@ -605,6 +659,13 @@ int CEnvironment::Iteration()					//will move to CExperiment later
 		}
 	}
 	this->CleanUp();
+	if(fd.N == 0)
+		return 0;
+	if(fd.timer == 0)
+	{
+		this->RandSpawnFood(fd.N, fd.hp);
+	}
+	fd.timer = (fd.timer + 1) % fd.period;
 	return 0;
 }
 
@@ -627,7 +688,7 @@ CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
 
 	CEnvironment *fld = new CEnvironment(fld_size, fld_size);
 
-	for(int j = 0; j < 2; j++)
+	for(int j = 0; j < 2; j++)					// Scanning for 2 colonies
 	{
 		CCellType *col1 = new CCellType;
 		char *name = new char[50];
@@ -638,7 +699,7 @@ CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
 			throw("FMT_ERR");
 		col1->type_name = name;
 
-		res = fscanf(fp, "(%d,%d,%d)\n", &def_hp, &speed, &rng);
+		res = fscanf(fp, "(%d,%d,%d)\n", &def_hp, &speed, &rng); // Colony parameters (def_hp, speed, view_range) 
 		if(res != 3)
 			throw("FMT_ERR COLONY PARAM");
 
@@ -657,7 +718,7 @@ CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
 			throw("FMT_ERR NCELLS");
 		if(Ncells < 1)
 			throw("BAD_DATA NCELLS");
-		for(int i = 0; i < Ncells; i++)
+		for(int i = 0; i < Ncells; i++)				// scanning for coords
 		{
 			res = fscanf(fp, "%d %d\n", &x, &y);
 			if(res != 2)
@@ -668,24 +729,55 @@ CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
 
 		}
 	}
-	int NFood = -1, food_val = -1;
-	res = fscanf(fp, "%d%d", &NFood, &food_val);
-	if(res != 2)
-		throw("FMT_ERR FOOD PARAM");
-	if(NFood < 1 || food_val < 1)
-		throw("BAD_DATA FOOD PARAM");
-	CFood *food_inst = new CFood(food_val);
-	for(int i = 0; i < NFood; i++)
+	char *arg = new char[10];
+	res = fscanf(fp, "%s", arg);
+	if(res != 1) 
 	{
-		int x = -1, y = -1;
-		res = fscanf(fp, "%d %d\n", &x, &y);
-		if(res != 2)
-			throw("FMT_ERR FOOD");
-		res = fld->PlantObject((CEnvironmentArea *)food_inst, x, y);
-		if(res == OUT_OF_FIELD)
-			throw("BAD_DATA FOOD");
+		fclose(fp);
+		return fld;
 	}
-
+	if(!(strcmp(arg, "start:") != 0 || strcmp(arg, "rand:") != 0))
+		throw("FMT ERR INIT FOOD\n");
+	if(strcmp(arg, "start:") == 0)					// scanning for initial food positions
+	{
+		int NFood = -1, food_val = -1;
+		res = fscanf(fp, "%d%d", &NFood, &food_val);
+		if(res != 2)
+			throw("FMT_ERR FOOD PARAM");
+		if(NFood < 1 || food_val < 1)
+			throw("BAD_DATA FOOD PARAM");
+		CFood *food_inst = new CFood(food_val);
+		for(int i = 0; i < NFood; i++)
+		{
+			int x = -1, y = -1;
+			res = fscanf(fp, "%d %d\n", &x, &y);
+			if(res != 2)
+				throw("FMT_ERR FOOD POS");
+			res = fld->PlantObject((CEnvironmentArea *)food_inst, x, y);
+			if(res == OUT_OF_FIELD)
+				throw("BAD_DATA FOOD POS");
+		}
+		res = fscanf(fp, "%s", arg);
+		if(res != 1) 
+		{
+			fclose(fp);
+			return fld;
+		}
+	}
+		
+	if(strcmp(arg, "rand:") == 0)
+	{
+		int N, hp, period;
+		res = fscanf(fp, "\n(%d,%d,%d)", &N, &hp, &period);
+		if(res != 3)
+		{
+			throw("FMT_ERR RAND FOOD PARAM");
+		}
+		if(period < 1 || N < 0)
+			throw("BAD_DATA RAND FOOD PARAM");
+		fld->SetFoodInfo(N, hp, period);
+	}
+	fclose(fp);
 	return fld;
 
 }

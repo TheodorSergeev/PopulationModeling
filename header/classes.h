@@ -85,12 +85,22 @@ struct CView
 
 typedef vector <CView> sur_t;
 
+struct FoodInfo				// describes food allocation
+					// if N = 0 no food is automatically allocated
+					// if N > 0 allocates N sources with hp size in random places each period iterations
+{
+	int N;
+	int hp;
+	int period;
+	int timer;
+};
 
 class CEnvironment
 {
 
 private:
 	envmap_t field;
+	FoodInfo fd;
 
 public:
 	CEnvironment(int, int);
@@ -118,11 +128,13 @@ public:
 
 	}
 
-    int WhatBactType(int, int);
+	int WhatBactType(int, int);
 
 	int SpawnFood();						// somehow add food on the field
 									// NOT IMPLEMENTED, USE NEXT ONE
 	int DumbSpawnFood();						// Adds food in free cell with 50% chance
+	int RandSpawnFood(int,int);
+	int SetFoodInfo(int N, int hp, int period);
 	int PlantObject(CEnvironmentArea *, int, int);	 		// puts object in certain place
 	int PlantObject(CEnvironmentArea *, coord_t);
 	int WipeOut(); 							// deletes every object in field
@@ -193,7 +205,7 @@ public:
 	CCell();
 	virtual	~CCell(){};
 
-    virtual CEnvironmentArea *GetCopy(){ return NULL; };
+	virtual CEnvironmentArea *GetCopy(){ return NULL; };
 
 	int type_id();
 	int view_range();
