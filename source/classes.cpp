@@ -357,7 +357,7 @@ int CEnvironment::DumbSpawnFood()					// food source appears in each free cell w
 			if(rand()%2 && field[i][j] == NULL)
 			{
 				CFood *portion = new CFood();
-				int err = this->PlantObject(portion, j, i);
+				int err = this->PlantObject((CEnvironmentArea *)portion, j, i);
 				if(!err)
 					planted++;
 				else
@@ -624,7 +624,7 @@ coord_t CEnvironment::Divide(int x, int y)			// Checks if biocell at (x, y) can 
 	coord_t pos = this->GetFreeAdj(x, y);
 	if(pos == INCORRECT || pos == NO_SPACE)
 		return pos;
-	this->PlantObject(curr->GetCopy(), pos);
+	this->PlantObject(field[y][x], pos);
 
 	curr->ResetHP();
 	return pos;
@@ -728,6 +728,7 @@ CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
 				throw("BAD_DATA COORD");
 
 		}
+		delete inst;
 	}
 	char *arg = new char[10];
 	res = fscanf(fp, "%s", arg);
@@ -757,6 +758,7 @@ CEnvironment *CEnvironment::StartCondFromFile(string path, int fld_size)
 			if(res == OUT_OF_FIELD)
 				throw("BAD_DATA FOOD POS");
 		}
+		delete food_inst;
 		res = fscanf(fp, "%s", arg);
 		if(res != 1) 
 		{
