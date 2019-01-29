@@ -1,0 +1,2 @@
+# added to exclude .tex files from project's language stats 
+description/* linguist-documentation
